@@ -21,6 +21,7 @@ class TimeAllocation:
     shallow_study_hours: float
     recovery_hours: float
     social_hours: float
+    personal_hours: float = MIN_COMMUTE_AND_PERSONAL_HOURS
 
     @property
     def total_hours(self) -> float:
@@ -32,6 +33,7 @@ class TimeAllocation:
             + self.shallow_study_hours
             + self.recovery_hours
             + self.social_hours
+            + self.personal_hours
         )
 
     @property
