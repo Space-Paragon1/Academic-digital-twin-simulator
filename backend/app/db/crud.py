@@ -49,7 +49,6 @@ def get_course(db: Session, course_id: int) -> Course | None:
 
 def create_course(db: Session, student_id: int, data: CourseCreate) -> Course:
     payload = data.model_dump()
-    payload["assessment_structure"] = payload["assessment_structure"]
     course = Course(student_id=student_id, **payload)
     db.add(course)
     db.commit()
@@ -89,5 +88,23 @@ def get_simulation_run(db: Session, sim_id: int) -> SimulationRun | None:
     return db.query(SimulationRun).filter(SimulationRun.id == sim_id).first()
 
 
-def get_simulation_runs_for_student(db: Session, student_id: int) -> list[SimulationRun]:
-    return db.query(SimulationRun).filter(SimulationRun.student_id == student_id).all()
+def get_simulation_runs_for_student(
+    db: Session, student_id: int, skip: int = 0, limit: int = 50
+) -> list[SimulationRun]:
+    return (
+        db.query(SimulationRun)
+        .filter(SimulationRun.student_id == student_id)
+        .order_by(SimulationRun.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
+def delete_simulation_run(db: Session, sim_id: int) -> bool:
+    run = get_simulation_run(db, sim_id)
+    if not run:
+        return False
+    db.delete(run)
+    db.commit()
+    return True
