@@ -24,6 +24,16 @@ const STUDENT_ID_KEY = "adt_student_id";
 
 const COLORS = { a: "#6366f1", b: "#f59e0b" } as const;
 
+const SLOT_LABEL_CLASS = {
+  indigo: "block text-xs font-semibold uppercase tracking-wide mb-1 text-indigo-600",
+  amber: "block text-xs font-semibold uppercase tracking-wide mb-1 text-amber-600",
+} as const;
+
+const RECOMMENDATION_CLASS = {
+  indigo: "rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800",
+  amber: "rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800",
+} as const;
+
 function scenarioLabel(sim: SimulationResult): string {
   return sim.scenario_config.scenario_name ?? `Scenario #${sim.id}`;
 }
@@ -130,7 +140,7 @@ export default function ComparePage() {
           const color = slot === "A" ? "indigo" : "amber";
           return (
             <div key={slot}>
-              <label className={`block text-xs font-semibold uppercase tracking-wide mb-1 text-${color}-600`}>
+              <label className={SLOT_LABEL_CLASS[color]}>
                 Scenario {slot}
               </label>
               <select
@@ -370,7 +380,7 @@ export default function ComparePage() {
             {[{ sim: simA, label: labelA, color: "indigo" }, { sim: simB, label: labelB, color: "amber" }].map(
               ({ sim, label, color }) =>
                 sim.summary.recommendation ? (
-                  <div key={label} className={`rounded-lg border border-${color}-200 bg-${color}-50 px-4 py-3 text-sm text-${color}-800`}>
+                  <div key={label} className={RECOMMENDATION_CLASS[color]}>
                     <p className="font-semibold mb-1">{label}</p>
                     {sim.summary.recommendation}
                   </div>
