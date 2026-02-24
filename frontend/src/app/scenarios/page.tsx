@@ -10,6 +10,7 @@ import { ScenarioBuilder } from "@/components/forms/ScenarioBuilder";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useStudent } from "@/hooks/useStudent";
 import { useScenario } from "@/hooks/useScenario";
+import { useToast } from "@/components/ui/Toaster";
 import type { ScenarioConfig } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
@@ -17,21 +18,36 @@ const STUDENT_ID_KEY = "adt_student_id";
 export default function ScenariosPage() {
   const { student, courses, loadStudent, loadCourses } = useStudent();
   const { runSimulation, result, isLoading: simLoading, error: simError } = useSimulation();
-  const { history, loadHistory } = useScenario();
+  const { history, loadHistory, deleteSimulation } = useScenario();
+  const toast = useToast();
 
   useEffect(() => {
     const stored = localStorage.getItem(STUDENT_ID_KEY);
     if (stored) {
       const id = parseInt(stored);
-      loadStudent(id);
-      loadCourses(id);
+      loadStudent(id).catch(() => {});
+      loadCourses(id).catch(() => {});
       loadHistory(id);
     }
   }, []);
 
   const handleRun = async (config: ScenarioConfig) => {
-    await runSimulation(config);
-    if (student) loadHistory(student.id);
+    try {
+      await runSimulation(config);
+      toast.success("Simulation complete! View your results below.", "Done");
+      if (student) loadHistory(student.id);
+    } catch {
+      // error shown inline by simError
+    }
+  };
+
+  const handleDelete = async (simId: number) => {
+    try {
+      await deleteSimulation(simId);
+      toast.info("Simulation deleted.");
+    } catch {
+      toast.error("Failed to delete simulation.");
+    }
   };
 
   if (!student) {
@@ -105,20 +121,33 @@ export default function ScenariosPage() {
           <p className="text-sm text-gray-500 italic">No simulations yet. Run your first scenario above.</p>
         ) : (
           history.slice().reverse().map((sim, i) => (
-            <Link key={sim.id ?? i} href={`/scenarios/${sim.id}`}>
-              <Card className="hover:border-brand-300 transition-colors cursor-pointer" padding="sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{sim.scenario_config.scenario_name ?? `Scenario #${sim.id}`}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      GPA {sim.summary.predicted_gpa_mean.toFixed(2)} · {sim.scenario_config.num_weeks} weeks ·{" "}
-                      {sim.scenario_config.study_strategy} study
-                    </p>
+            <div key={sim.id ?? i} className="relative group">
+              <Link href={`/scenarios/${sim.id}`}>
+                <Card className="hover:border-brand-300 transition-colors cursor-pointer" padding="sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{sim.scenario_config.scenario_name ?? `Scenario #${sim.id}`}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        GPA {sim.summary.predicted_gpa_mean.toFixed(2)} · {sim.scenario_config.num_weeks} weeks ·{" "}
+                        {sim.scenario_config.study_strategy} study
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BurnoutBadge risk={sim.summary.burnout_risk} />
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (sim.id) handleDelete(sim.id); }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 text-lg leading-none px-1"
+                        title="Delete simulation"
+                        aria-label="Delete simulation"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
-                  <BurnoutBadge risk={sim.summary.burnout_risk} />
-                </div>
-              </Card>
-            </Link>
+                </Card>
+              </Link>
+            </div>
           ))
         )}
       </div>
