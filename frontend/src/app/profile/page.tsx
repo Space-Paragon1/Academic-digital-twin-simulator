@@ -8,12 +8,14 @@ import { Spinner } from "@/components/ui/Spinner";
 import { StudentProfileForm } from "@/components/forms/StudentProfileForm";
 import { CourseForm } from "@/components/forms/CourseForm";
 import { useStudent } from "@/hooks/useStudent";
+import { useToast } from "@/components/ui/Toaster";
 import type { CourseCreate, StudentCreate } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
 
 export default function ProfilePage() {
   const { student, courses, isLoading, error, createStudent, updateStudent, loadStudent, addCourse, removeCourse, loadCourses } = useStudent();
+  const toast = useToast();
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [initDone, setInitDone] = useState(false);
 
@@ -21,28 +23,52 @@ export default function ProfilePage() {
     const stored = localStorage.getItem(STUDENT_ID_KEY);
     if (stored) {
       const id = parseInt(stored);
-      loadStudent(id).then(() => loadCourses(id));
+      loadStudent(id).then(() => loadCourses(id)).catch(() => {});
     }
     setInitDone(true);
   }, []);
 
   const handleCreateStudent = async (data: StudentCreate) => {
-    const s = await createStudent(data);
-    if (s) {
-      localStorage.setItem(STUDENT_ID_KEY, String(s.id));
-      await loadCourses(s.id);
+    try {
+      const s = await createStudent(data);
+      if (s) {
+        localStorage.setItem(STUDENT_ID_KEY, String(s.id));
+        await loadCourses(s.id).catch(() => {});
+        toast.success("Profile created! Add your courses below.", "Welcome");
+      }
+    } catch {
+      // error shown inline by hook
     }
   };
 
   const handleUpdateStudent = async (data: StudentCreate) => {
     if (!student) return;
-    await updateStudent(student.id, data);
+    try {
+      await updateStudent(student.id, data);
+      toast.success("Profile saved successfully.");
+    } catch {
+      // error shown inline by hook
+    }
   };
 
   const handleAddCourse = async (data: CourseCreate) => {
     if (!student) return;
-    await addCourse(student.id, data);
-    setShowCourseForm(false);
+    try {
+      await addCourse(student.id, data);
+      setShowCourseForm(false);
+      toast.success(`"${data.name}" added to your courses.`);
+    } catch {
+      // error shown inline by hook
+    }
+  };
+
+  const handleRemoveCourse = async (courseId: number, courseName: string) => {
+    try {
+      await removeCourse(courseId);
+      toast.info(`"${courseName}" removed.`);
+    } catch {
+      toast.error("Failed to remove course.");
+    }
   };
 
   if (!initDone || isLoading) {
@@ -83,7 +109,7 @@ export default function ProfilePage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeCourse(course.id)}
+                  onClick={() => handleRemoveCourse(course.id, course.name)}
                   className="text-red-500 hover:text-red-700"
                 >
                   Remove
