@@ -10,6 +10,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
+import { memo } from "react";
 import type { WeeklySnapshot } from "@/lib/types";
 
 interface CognitiveLoadChartProps {
@@ -37,7 +38,7 @@ const CustomDot = (props: { cx?: number; cy?: number; payload?: WeeklySnapshot }
   );
 };
 
-export function CognitiveLoadChart({ snapshots }: CognitiveLoadChartProps) {
+export const CognitiveLoadChart = memo(function CognitiveLoadChart({ snapshots }: CognitiveLoadChartProps) {
   const data = snapshots.map((s) => ({
     week: `W${s.week}`,
     load: s.cognitive_load,
@@ -88,4 +89,4 @@ export function CognitiveLoadChart({ snapshots }: CognitiveLoadChartProps) {
       </LineChart>
     </ResponsiveContainer>
   );
-}
+});
