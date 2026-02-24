@@ -78,11 +78,19 @@ export default function DashboardPage() {
   }
 
   if (!latestResult) {
+    const hasProfile = !!parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
-        <p className="text-gray-500">No simulation results yet.</p>
-        <Link href="/profile">
-          <Button>Set Up Profile &amp; Run Simulation</Button>
+        <p className="text-lg font-semibold text-gray-700">
+          {hasProfile ? "No simulations yet." : "Welcome! Let's get you set up."}
+        </p>
+        <p className="text-sm text-gray-500 max-w-sm">
+          {hasProfile
+            ? "Head to Scenarios to run your first simulation."
+            : "Create your student profile and add your courses, then run a scenario to see predictions here."}
+        </p>
+        <Link href={hasProfile ? "/scenarios" : "/profile"}>
+          <Button>{hasProfile ? "Run a Scenario" : "Create Profile"}</Button>
         </Link>
       </div>
     );
