@@ -14,7 +14,26 @@ import type {
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
   headers: { "Content-Type": "application/json" },
+  // Fail fast: 10 s for normal requests, 60 s for long-running optimizer
+  timeout: 10_000,
 });
+
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+      return Promise.reject(new Error("Request timed out — is the backend running on port 8000?"));
+    }
+    if (!err.response) {
+      return Promise.reject(new Error("Cannot reach the backend — start it with: uvicorn app.main:app --reload --port 8000"));
+    }
+    const detail = err.response?.data?.detail;
+    const message = Array.isArray(detail)
+      ? detail.map((d: { msg: string }) => d.msg).join(", ")
+      : (detail as string | undefined) ?? err.message ?? "Unknown error";
+    return Promise.reject(new Error(message));
+  }
+);
 
 // ── Students ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +82,9 @@ export const simulationsApi = {
     api
       .get<SimulationResult[]>(`/api/v1/simulations/student/${studentId}`)
       .then((r) => r.data),
+
+  delete: (simId: number) =>
+    api.delete(`/api/v1/simulations/${simId}`).then((r) => r.data),
 };
 
 // ── Optimization ──────────────────────────────────────────────────────────────
@@ -70,6 +92,6 @@ export const simulationsApi = {
 export const optimizationApi = {
   optimize: (request: OptimizationRequest) =>
     api
-      .post<OptimizationResult>("/api/v1/scenarios/optimize", request)
+      .post<OptimizationResult>("/api/v1/scenarios/optimize", request, { timeout: 60_000 })
       .then((r) => r.data),
 };
