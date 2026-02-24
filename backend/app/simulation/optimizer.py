@@ -118,9 +118,6 @@ def optimize_schedule(
     )
     final_sim = engine.run(config=optimal_config, courses=courses, student=student)
 
-    burnout_prob_map = {"LOW": 0.15, "MEDIUM": 0.50, "HIGH": 0.85}
-    burnout_prob = burnout_prob_map[final_sim.summary.burnout_risk]
-
     return OptimizationResult(
         objective=request.objective,
         optimal_work_hours=optimal_work,
@@ -131,6 +128,6 @@ def optimize_schedule(
         },
         optimal_study_strategy=optimal_strategy,
         predicted_gpa=final_sim.summary.predicted_gpa_mean,
-        predicted_burnout_probability=burnout_prob,
+        predicted_burnout_probability=final_sim.summary.burnout_probability,
         simulation_result=final_sim,
     )
