@@ -23,6 +23,8 @@ class WeeklySnapshot(BaseModel):
     retention_score: float = Field(..., ge=0.0, le=1.0)
     time_allocation: TimeAllocation
     course_grades: dict[str, float]
+    course_retentions: dict[str, float] = Field(default_factory=dict)
+    is_exam_week: bool = False
 
 
 class SimulationSummary(BaseModel):
@@ -30,6 +32,7 @@ class SimulationSummary(BaseModel):
     predicted_gpa_max: float
     predicted_gpa_mean: float
     burnout_risk: Literal["LOW", "MEDIUM", "HIGH"]
+    burnout_probability: float = Field(default=0.0, ge=0.0, le=1.0)
     peak_overload_weeks: list[int]
     required_study_hours_per_week: float
     sleep_deficit_hours: float
@@ -44,6 +47,7 @@ class ScenarioConfig(BaseModel):
     study_strategy: Literal["spaced", "cramming", "mixed"] = "spaced"
     include_course_ids: list[int] = Field(default_factory=list)
     scenario_name: str | None = None
+    exam_weeks: list[int] = Field(default_factory=lambda: [8, 16])
 
 
 class SimulationResult(BaseModel):
