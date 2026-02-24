@@ -8,6 +8,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "▦" },
   { href: "/profile", label: "My Profile", icon: "◎" },
   { href: "/scenarios", label: "Scenarios", icon: "◈" },
+  { href: "/compare", label: "Compare", icon: "⊞" },
   { href: "/optimizer", label: "Optimizer", icon: "◉" },
 ];
 
