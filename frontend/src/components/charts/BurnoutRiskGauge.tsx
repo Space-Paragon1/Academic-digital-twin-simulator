@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { RadialBarChart, RadialBar, ResponsiveContainer, PolarAngleAxis } from "recharts";
 import type { BurnoutRisk } from "@/lib/types";
 
@@ -20,7 +21,7 @@ const riskDescriptions: Record<BurnoutRisk, string> = {
   HIGH: "Immediate schedule adjustment recommended.",
 };
 
-export function BurnoutRiskGauge({ probability, risk }: BurnoutRiskGaugeProps) {
+export const BurnoutRiskGauge = memo(function BurnoutRiskGauge({ probability, risk }: BurnoutRiskGaugeProps) {
   const percentage = Math.round(probability * 100);
   const color = riskColors[risk];
   const data = [{ value: percentage, fill: color }];
@@ -60,4 +61,4 @@ export function BurnoutRiskGauge({ probability, risk }: BurnoutRiskGaugeProps) {
       <p className="mt-2 text-center text-sm text-gray-500">{riskDescriptions[risk]}</p>
     </div>
   );
-}
+});
