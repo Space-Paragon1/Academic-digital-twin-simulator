@@ -30,6 +30,7 @@ export function useStudent(): UseStudentReturn {
       await fn();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An error occurred.");
+      throw err; // re-throw so callers can catch for toast notifications
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +45,7 @@ export function useStudent(): UseStudentReturn {
       return s;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to create student.");
-      return null;
+      throw err; // re-throw so callers can catch for toast notifications
     } finally {
       setIsLoading(false);
     }
