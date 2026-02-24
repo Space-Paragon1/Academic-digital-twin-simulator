@@ -11,6 +11,7 @@ import {
   ReferenceLine,
   ResponsiveContainer,
 } from "recharts";
+import { memo } from "react";
 import type { WeeklySnapshot } from "@/lib/types";
 
 interface CourseGradesChartProps {
@@ -84,7 +85,7 @@ function CustomTooltip({
   );
 }
 
-export function CourseGradesChart({ snapshots }: CourseGradesChartProps) {
+export const CourseGradesChart = memo(function CourseGradesChart({ snapshots }: CourseGradesChartProps) {
   if (!snapshots.length) return null;
 
   const courseNames = Object.keys(snapshots[0].course_grades);
@@ -148,4 +149,4 @@ export function CourseGradesChart({ snapshots }: CourseGradesChartProps) {
       </LineChart>
     </ResponsiveContainer>
   );
-}
+});
