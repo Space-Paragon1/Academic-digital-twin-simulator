@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
+import { LayoutDashboard, UserCircle, FlaskConical, GitCompare, Sparkles } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "▦" },
-  { href: "/profile", label: "My Profile", icon: "◎" },
-  { href: "/scenarios", label: "Scenarios", icon: "◈" },
-  { href: "/compare", label: "Compare", icon: "⊞" },
-  { href: "/optimizer", label: "Optimizer", icon: "◉" },
+const navItems: { href: string; label: string; Icon: LucideIcon }[] = [
+  { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
+  { href: "/profile", label: "My Profile", Icon: UserCircle },
+  { href: "/scenarios", label: "Scenarios", Icon: FlaskConical },
+  { href: "/compare", label: "Compare", Icon: GitCompare },
+  { href: "/optimizer", label: "Optimizer", Icon: Sparkles },
 ];
 
 export function Sidebar() {
@@ -18,7 +20,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-56 shrink-0 border-r border-gray-200 bg-gray-50 lg:block">
       <nav className="flex flex-col gap-1 p-4">
-        {navItems.map(({ href, label, icon }) => (
+        {navItems.map(({ href, label, Icon }) => (
           <Link
             key={href}
             href={href}
@@ -29,7 +31,7 @@ export function Sidebar() {
                 : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             )}
           >
-            <span className="text-base">{icon}</span>
+            <Icon size={16} />
             {label}
           </Link>
         ))}
