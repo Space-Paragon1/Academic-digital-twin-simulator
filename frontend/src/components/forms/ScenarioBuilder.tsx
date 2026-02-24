@@ -17,6 +17,11 @@ const STRATEGY_OPTIONS: { value: StudyStrategy; label: string; desc: string }[] 
   { value: "cramming", label: "Cramming", desc: "High short-term, fast decay" },
 ];
 
+function defaultExamWeeks(numWeeks: number): number[] {
+  const midterm = Math.round(numWeeks / 2);
+  return [midterm, numWeeks].filter((w, i, arr) => arr.indexOf(w) === i);
+}
+
 export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: ScenarioBuilderProps) {
   const [numWeeks, setNumWeeks] = useState(16);
   const [workHours, setWorkHours] = useState(10);
@@ -24,6 +29,18 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
   const [strategy, setStrategy] = useState<StudyStrategy>("spaced");
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>(courses.map((c) => c.id));
   const [scenarioName, setScenarioName] = useState("");
+  const [examWeeks, setExamWeeks] = useState<number[]>(defaultExamWeeks(16));
+
+  const handleNumWeeksChange = (weeks: number) => {
+    setNumWeeks(weeks);
+    setExamWeeks(defaultExamWeeks(weeks));
+  };
+
+  const toggleExamWeek = (week: number) => {
+    setExamWeeks((prev) =>
+      prev.includes(week) ? prev.filter((w) => w !== week) : [...prev, week].sort((a, b) => a - b)
+    );
+  };
 
   const toggleCourse = (id: number) => {
     setSelectedCourseIds((prev) =>
@@ -31,7 +48,7 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     await onRun({
       student_id: studentId,
@@ -41,6 +58,7 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
       study_strategy: strategy,
       include_course_ids: selectedCourseIds,
       scenario_name: scenarioName || undefined,
+      exam_weeks: examWeeks,
     });
   };
 
@@ -62,7 +80,7 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
           Semester Length: <span className="font-semibold text-brand-600">{numWeeks} weeks</span>
         </label>
         <input type="range" min={4} max={20} step={1} value={numWeeks}
-          onChange={(e) => setNumWeeks(parseInt(e.target.value))} className="w-full accent-brand-600" />
+          onChange={(e) => handleNumWeeksChange(parseInt(e.target.value))} className="w-full accent-brand-600" />
         <div className="flex justify-between text-xs text-gray-400 mt-1"><span>4 wks</span><span>20 wks</span></div>
       </div>
 
@@ -103,6 +121,40 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Exam weeks picker */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Exam Weeks{" "}
+          <span className="text-xs font-normal text-gray-500">
+            (1.3× load · reduced recovery time)
+          </span>
+        </label>
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {Array.from({ length: numWeeks }, (_, i) => i + 1).map((w) => {
+            const active = examWeeks.includes(w);
+            return (
+              <button
+                key={w}
+                type="button"
+                onClick={() => toggleExamWeek(w)}
+                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                  active
+                    ? "bg-red-100 text-red-700 border border-red-300"
+                    : "bg-gray-100 text-gray-500 border border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                W{w}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-400 mt-1.5">
+          {examWeeks.length === 0
+            ? "No exam weeks — uniform pressure all semester"
+            : `Exam weeks: ${examWeeks.map((w) => `W${w}`).join(", ")}`}
+        </p>
       </div>
 
       <div>
