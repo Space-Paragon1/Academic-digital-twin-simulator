@@ -12,7 +12,10 @@ dist/
 build/
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
+.mypy_cache/
+.ruff_cache/
 *.db
 *.sqlite3
 
@@ -27,7 +30,6 @@ htmlcov/
 node_modules/
 .next/
 out/
-dist/
 .turbo/
 *.tsbuildinfo
 npm-debug.log*
