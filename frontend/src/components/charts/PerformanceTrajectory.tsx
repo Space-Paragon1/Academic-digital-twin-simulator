@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   AreaChart,
   Area,
@@ -17,7 +18,7 @@ interface PerformanceTrajectoryProps {
   targetGpa?: number;
 }
 
-export function PerformanceTrajectory({ result, targetGpa = 3.5 }: PerformanceTrajectoryProps) {
+export const PerformanceTrajectory = memo(function PerformanceTrajectory({ result, targetGpa = 3.5 }: PerformanceTrajectoryProps) {
   const std = (result.summary.predicted_gpa_max - result.summary.predicted_gpa_min) / 2;
 
   const data = result.weekly_snapshots.map((s) => ({
@@ -77,4 +78,4 @@ export function PerformanceTrajectory({ result, targetGpa = 3.5 }: PerformanceTr
       </AreaChart>
     </ResponsiveContainer>
   );
-}
+});
