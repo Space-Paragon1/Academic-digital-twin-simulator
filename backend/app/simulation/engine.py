@@ -14,6 +14,7 @@ Simulation tick order (each week):
 All subsystems are pure functions — the engine owns mutable state.
 """
 
+import statistics
 from datetime import datetime, timezone
 
 from app.schemas.simulation import (
@@ -30,6 +31,10 @@ from app.simulation import (
     retention_model as ret,
     time_system as ts,
 )
+
+
+# 7 hours/night × 7 nights = recommended weekly sleep hours
+_RECOMMENDED_WEEKLY_SLEEP_HOURS: float = 49.0
 
 
 class SimulationEngine:
@@ -185,7 +190,7 @@ class SimulationEngine:
 
         # ── Build summary ──────────────────────────────────────────────────
         final_gpa = pm.compute_semester_gpa(weekly_grades_history, course_credits)
-        gpa_std = float(__import__("statistics").stdev(gpa_history)) if len(gpa_history) > 1 else 0.0
+        gpa_std = float(statistics.stdev(gpa_history)) if len(gpa_history) > 1 else 0.0
         gpa_min = max(0.0, final_gpa - gpa_std)
         gpa_max = min(4.0, final_gpa + gpa_std)
 
@@ -201,7 +206,7 @@ class SimulationEngine:
         ]
 
         avg_sleep_per_week = sum(sleep_history) / len(sleep_history)
-        sleep_deficit = max(0.0, 49.0 - avg_sleep_per_week)
+        sleep_deficit = max(0.0, _RECOMMENDED_WEEKLY_SLEEP_HOURS - avg_sleep_per_week)
 
         required_study = sum(
             c.weekly_workload_hours * (c.difficulty_score / 5.0) for c in courses
