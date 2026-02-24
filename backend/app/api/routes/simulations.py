@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -51,12 +51,17 @@ def get_simulation(sim_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/student/{student_id}", response_model=list[SimulationResult])
-def list_simulations(student_id: int, db: Session = Depends(get_db)):
-    """List all simulation runs for a student."""
+def list_simulations(
+    student_id: int,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: Session = Depends(get_db),
+):
+    """List simulation runs for a student with pagination."""
     student = crud.get_student(db, student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
-    runs = crud.get_simulation_runs_for_student(db, student_id)
+    runs = crud.get_simulation_runs_for_student(db, student_id, skip=skip, limit=limit)
     results = []
     for run in runs:
         r = SimulationResult(**run.results)
@@ -64,3 +69,11 @@ def list_simulations(student_id: int, db: Session = Depends(get_db)):
         r.created_at = run.created_at
         results.append(r)
     return results
+
+
+@router.delete("/{sim_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_simulation(sim_id: int, db: Session = Depends(get_db)):
+    """Delete a simulation run by ID."""
+    deleted = crud.delete_simulation_run(db, sim_id)
+    if not deleted:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
