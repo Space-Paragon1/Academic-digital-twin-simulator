@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   AreaChart,
   Area,
@@ -60,13 +61,19 @@ function CustomTooltip({
   );
 }
 
-export function CourseRetentionChart({ snapshots }: CourseRetentionChartProps) {
+export const CourseRetentionChart = memo(function CourseRetentionChart({ snapshots }: CourseRetentionChartProps) {
   if (!snapshots.length) return null;
 
   // Fall back gracefully for older simulation records without per-course retention
   const firstRetentions = snapshots[0].course_retentions ?? {};
   const courseNames = Object.keys(firstRetentions);
-  if (!courseNames.length) return null;
+  if (!courseNames.length) {
+    return (
+      <p className="text-sm text-gray-400 italic py-4 text-center">
+        Retention data not available for this simulation.
+      </p>
+    );
+  }
 
   const data = snapshots.map((s) => ({
     week: s.week,
@@ -124,4 +131,4 @@ export function CourseRetentionChart({ snapshots }: CourseRetentionChartProps) {
       </AreaChart>
     </ResponsiveContainer>
   );
-}
+});
