@@ -14,6 +14,7 @@ interface UseScenarioReturn {
   isLoading: boolean;
   error: string | null;
   loadHistory: (studentId: number) => Promise<void>;
+  deleteSimulation: (simId: number) => Promise<void>;
   runOptimization: (request: OptimizationRequest) => Promise<void>;
 }
 
@@ -36,6 +37,17 @@ export function useScenario(): UseScenarioReturn {
     }
   }, []);
 
+  const deleteSimulation = useCallback(async (simId: number) => {
+    setError(null);
+    try {
+      await simulationsApi.delete(simId);
+      setHistory((prev) => prev.filter((s) => s.id !== simId));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete simulation.");
+      throw err;
+    }
+  }, []);
+
   const runOptimization = useCallback(async (request: OptimizationRequest) => {
     setIsLoading(true);
     setError(null);
@@ -44,10 +56,11 @@ export function useScenario(): UseScenarioReturn {
       setOptimizationResult(result);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Optimization failed.");
+      throw err;
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  return { history, optimizationResult, isLoading, error, loadHistory, runOptimization };
+  return { history, optimizationResult, isLoading, error, loadHistory, deleteSimulation, runOptimization };
 }
