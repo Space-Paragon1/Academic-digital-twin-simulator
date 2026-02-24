@@ -14,6 +14,7 @@ import { TimeAllocationChart } from "@/components/charts/TimeAllocationChart";
 import { CourseGradesChart } from "@/components/charts/CourseGradesChart";
 import { CourseRetentionChart } from "@/components/charts/CourseRetentionChart";
 import { simulationsApi, studentsApi } from "@/lib/api";
+import { useToast } from "@/components/ui/Toaster";
 import type { SimulationResult, WeeklySnapshot } from "@/lib/types";
 
 function exportToCsv(result: SimulationResult): void {
@@ -83,6 +84,7 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
   const [targetGpa, setTargetGpa] = useState<number>(3.5);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     simulationsApi
@@ -121,7 +123,18 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" size="sm" onClick={() => exportToCsv(result)}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              try {
+                exportToCsv(result);
+                toast.success("CSV exported successfully.");
+              } catch {
+                toast.error("Failed to export CSV. Please try again.");
+              }
+            }}
+          >
             Export CSV
           </Button>
           <BurnoutBadge risk={summary.burnout_risk} />
