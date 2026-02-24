@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { BurnoutBadge } from "@/components/ui/Badge";
 import { PerformanceTrajectory } from "@/components/charts/PerformanceTrajectory";
+import { CourseGradesChart } from "@/components/charts/CourseGradesChart";
 import { useScenario } from "@/hooks/useScenario";
 import { useStudent } from "@/hooks/useStudent";
+import { useToast } from "@/components/ui/Toaster";
 import type { OptimizationObjective } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
@@ -20,8 +22,9 @@ const OBJECTIVES: { value: OptimizationObjective; label: string; desc: string }[
 ];
 
 export default function OptimizerPage() {
-  const { student, loadStudent } = useStudent();
+  const { student, courses, loadStudent, loadCourses } = useStudent();
   const { optimizationResult, isLoading, error, runOptimization } = useScenario();
+  const toast = useToast();
   const [objective, setObjective] = useState<OptimizationObjective>("maximize_gpa");
   const [maxWork, setMaxWork] = useState(20);
   const [minSleep, setMinSleep] = useState(6.0);
@@ -29,17 +32,26 @@ export default function OptimizerPage() {
 
   useEffect(() => {
     const stored = localStorage.getItem(STUDENT_ID_KEY);
-    if (stored) loadStudent(parseInt(stored));
+    if (stored) {
+      const id = parseInt(stored);
+      loadStudent(id).catch(() => {});
+      loadCourses(id).catch(() => {});
+    }
   }, []);
 
   const handleOptimize = async () => {
     if (!student) return;
-    await runOptimization({
-      student_id: student.id,
-      num_weeks: 16,
-      constraints: { max_work_hours_per_week: maxWork, min_sleep_hours: minSleep, target_min_gpa: targetGpa },
-      objective,
-    });
+    try {
+      await runOptimization({
+        student_id: student.id,
+        num_weeks: 16,
+        constraints: { max_work_hours_per_week: maxWork, min_sleep_hours: minSleep, target_min_gpa: targetGpa },
+        objective,
+      });
+      toast.success("Optimal schedule found!", "Optimizer");
+    } catch {
+      // error shown inline by the hook
+    }
   };
 
   if (!student) {
@@ -80,36 +92,60 @@ export default function OptimizerPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="max-work" className="block text-sm font-medium text-gray-700 mb-1">
                 Max Work Hours/Week: <span className="font-semibold text-brand-600">{maxWork}h</span>
               </label>
-              <input type="range" min={0} max={60} step={1} value={maxWork}
-                onChange={(e) => setMaxWork(parseInt(e.target.value))} className="w-full accent-brand-600" />
+              <input
+                id="max-work"
+                type="range" min={0} max={60} step={1} value={maxWork}
+                aria-label="Maximum work hours per week"
+                onChange={(e) => setMaxWork(parseInt(e.target.value))}
+                className="w-full accent-brand-600"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="min-sleep" className="block text-sm font-medium text-gray-700 mb-1">
                 Minimum Sleep/Night: <span className="font-semibold text-brand-600">{minSleep}h</span>
               </label>
-              <input type="range" min={4} max={10} step={0.5} value={minSleep}
-                onChange={(e) => setMinSleep(parseFloat(e.target.value))} className="w-full accent-brand-600" />
+              <input
+                id="min-sleep"
+                type="range" min={4} max={10} step={0.5} value={minSleep}
+                aria-label="Minimum sleep hours per night"
+                onChange={(e) => setMinSleep(parseFloat(e.target.value))}
+                className="w-full accent-brand-600"
+              />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="target-gpa" className="block text-sm font-medium text-gray-700 mb-1">
                 Minimum Target GPA: <span className="font-semibold text-brand-600">{targetGpa.toFixed(1)}</span>
               </label>
-              <input type="range" min={0} max={4.0} step={0.1} value={targetGpa}
-                onChange={(e) => setTargetGpa(parseFloat(e.target.value))} className="w-full accent-brand-600" />
+              <input
+                id="target-gpa"
+                type="range" min={0} max={4.0} step={0.1} value={targetGpa}
+                aria-label="Minimum target GPA"
+                onChange={(e) => setTargetGpa(parseFloat(e.target.value))}
+                className="w-full accent-brand-600"
+              />
             </div>
 
-            <Button onClick={handleOptimize} isLoading={isLoading} className="w-full" size="lg">
-              Run Optimizer
-            </Button>
-
-            <p className="text-xs text-gray-400 text-center">
-              Uses differential evolution — may take 10–30 seconds
-            </p>
+            {courses.length === 0 ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Add at least one course on the{" "}
+                <Link href="/profile" className="underline font-medium">Profile page</Link>{" "}
+                before running the optimizer.
+              </div>
+            ) : (
+              <>
+                <Button onClick={handleOptimize} isLoading={isLoading} className="w-full" size="lg">
+                  Run Optimizer
+                </Button>
+                <p className="text-xs text-gray-400 text-center">
+                  Uses differential evolution — may take 10–30 seconds
+                </p>
+              </>
+            )}
           </div>
         </Card>
 
@@ -150,6 +186,10 @@ export default function OptimizerPage() {
 
               <Card title="Optimal GPA Trajectory">
                 <PerformanceTrajectory result={optimizationResult.simulation_result} />
+              </Card>
+
+              <Card title="Per-Course Grade Trajectories" subtitle="Predicted grades under optimal schedule">
+                <CourseGradesChart snapshots={optimizationResult.simulation_result.weekly_snapshots} />
               </Card>
             </>
           )}
