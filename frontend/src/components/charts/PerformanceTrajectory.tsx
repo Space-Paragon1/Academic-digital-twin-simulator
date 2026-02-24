@@ -14,10 +14,10 @@ import type { SimulationResult } from "@/lib/types";
 
 interface PerformanceTrajectoryProps {
   result: SimulationResult;
+  targetGpa?: number;
 }
 
-export function PerformanceTrajectory({ result }: PerformanceTrajectoryProps) {
-  const targetGpa = result.scenario_config.student_id ? 3.5 : 3.5;
+export function PerformanceTrajectory({ result, targetGpa = 3.5 }: PerformanceTrajectoryProps) {
   const std = (result.summary.predicted_gpa_max - result.summary.predicted_gpa_min) / 2;
 
   const data = result.weekly_snapshots.map((s) => ({
