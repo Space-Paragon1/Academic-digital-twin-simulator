@@ -66,6 +66,7 @@ export interface ScenarioConfig {
   study_strategy: StudyStrategy;
   include_course_ids: number[];
   scenario_name?: string;
+  exam_weeks: number[];
 }
 
 export interface TimeAllocation {
@@ -88,6 +89,8 @@ export interface WeeklySnapshot {
   retention_score: number;
   time_allocation: TimeAllocation;
   course_grades: Record<string, number>;
+  course_retentions: Record<string, number>;
+  is_exam_week: boolean;
 }
 
 export interface SimulationSummary {
@@ -95,6 +98,7 @@ export interface SimulationSummary {
   predicted_gpa_max: number;
   predicted_gpa_mean: number;
   burnout_risk: BurnoutRisk;
+  burnout_probability: number;
   peak_overload_weeks: number[];
   required_study_hours_per_week: number;
   sleep_deficit_hours: number;
