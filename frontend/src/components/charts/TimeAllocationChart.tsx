@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import type { TimeAllocation } from "@/lib/types";
 
@@ -17,7 +18,7 @@ const BUCKETS = [
   { key: "social_hours" as keyof TimeAllocation, label: "Social", color: "#8b5cf6" },
 ];
 
-export function TimeAllocationChart({ allocation }: TimeAllocationChartProps) {
+export const TimeAllocationChart = memo(function TimeAllocationChart({ allocation }: TimeAllocationChartProps) {
   const data = BUCKETS.map((b) => ({
     name: b.label,
     value: parseFloat((allocation[b.key] as number).toFixed(1)),
@@ -52,4 +53,4 @@ export function TimeAllocationChart({ allocation }: TimeAllocationChartProps) {
       </PieChart>
     </ResponsiveContainer>
   );
-}
+});
