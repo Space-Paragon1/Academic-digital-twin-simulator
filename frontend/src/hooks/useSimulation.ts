@@ -27,6 +27,7 @@ export function useSimulation(): UseSimulationReturn {
       const message =
         err instanceof Error ? err.message : "Simulation failed. Please try again.";
       setError(message);
+      throw err;
     } finally {
       setIsLoading(false);
     }
