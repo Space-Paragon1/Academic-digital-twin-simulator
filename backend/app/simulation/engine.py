@@ -81,13 +81,16 @@ class SimulationEngine:
 
         # ── Week-by-week simulation ────────────────────────────────────────
         for week in range(1, config.num_weeks + 1):
+            is_exam_week = week in (config.exam_weeks or [])
 
-            # 1. Time system
+            # 1. Time system — during exam weeks squeeze soft reserves for more study
             alloc: ts.TimeAllocation = ts.allocate_time(
                 courses=courses,
                 work_hours=config.work_hours_per_week,
                 sleep_target_hours=config.sleep_target_hours,
                 study_strategy=config.study_strategy,
+                recovery_hours=2.0 if is_exam_week else 4.0,
+                social_hours=2.0 if is_exam_week else 5.0,
             )
 
             # 2. Distribute study hours across courses
@@ -97,13 +100,15 @@ class SimulationEngine:
                 total_study_hours=total_study,
             )
 
-            # 3. Cognitive load
+            # 3. Cognitive load — apply 1.3× exam pressure multiplier
             weekly_load = cl.compute_weekly_load(
                 courses=courses,
                 study_hours_per_course=study_per_course,
                 prior_fatigue=fatigue,
                 sleep_hours=alloc.sleep_hours,
             )
+            if is_exam_week:
+                weekly_load = min(100.0, weekly_load * 1.3)
 
             # 4. Retention update per course
             for course in courses:
@@ -171,6 +176,10 @@ class SimulationEngine:
                     total_hours=alloc.total_hours,
                 ),
                 course_grades={k: round(v, 1) for k, v in course_grades.items()},
+                course_retentions={
+                    c.name: round(retention_per_course[c.id], 3) for c in courses
+                },
+                is_exam_week=is_exam_week,
             )
             weekly_snapshots.append(snapshot)
 
@@ -210,6 +219,7 @@ class SimulationEngine:
             predicted_gpa_max=round(gpa_max, 2),
             predicted_gpa_mean=round(final_gpa, 2),
             burnout_risk=burnout_risk,
+            burnout_probability=round(final_burnout_prob, 3),
             peak_overload_weeks=peak_weeks,
             required_study_hours_per_week=round(required_study, 1),
             sleep_deficit_hours=round(sleep_deficit, 1),
