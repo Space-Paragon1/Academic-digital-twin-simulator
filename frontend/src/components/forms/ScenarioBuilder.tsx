@@ -182,6 +182,9 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
         )}
       </div>
 
+      {selectedCourseIds.length === 0 && courses.length > 0 && (
+        <p className="text-xs text-amber-600 text-center">Select at least one course to run a simulation.</p>
+      )}
       <Button type="submit" isLoading={isLoading} className="w-full" size="lg"
         disabled={selectedCourseIds.length === 0}>
         Run Simulation
