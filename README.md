@@ -1,6 +1,6 @@
 # Academic Digital Twin Simulator
 
-> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios.
+> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Courses can be imported directly from Canvas LMS.
 
 ## Architecture
 
@@ -23,6 +23,7 @@ Academic-digital-twin-simulator/
                     │   /api/v1/courses                     │
                     │   /api/v1/simulations                 │
                     │   /api/v1/scenarios/optimize          │
+                    │   /api/v1/canvas/preview              │
                     └────────────┬─────────────────────────┘
                                  │
                     ┌────────────▼─────────────────────────┐
@@ -105,11 +106,43 @@ pytest tests/ -v
 | Page | Route | Description |
 |------|-------|-------------|
 | **Dashboard** | `/dashboard` | Latest simulation with trend indicators vs previous run |
-| **Profile** | `/profile` | Student profile and course enrollment |
+| **Profile** | `/profile` | Student profile, course enrollment, and Canvas LMS import |
 | **Scenarios** | `/scenarios` | Run simulations, view history, manage results |
 | **Scenario Detail** | `/scenarios/:id` | Full report with charts, weekly table, and CSV export |
 | **Compare** | `/compare` | Side-by-side overlay of two scenarios |
 | **Optimizer** | `/optimizer` | Differential evolution schedule optimizer |
+
+---
+
+## Canvas LMS Integration
+
+Import your real enrolled courses directly from your institution's Canvas instance — no manual entry needed.
+
+**How it works:**
+
+1. On the **Profile** page, click **Import from Canvas**
+2. Enter your institution's Canvas base URL (e.g. `https://yourschool.instructure.com`)
+3. Paste a Canvas personal access token
+4. Review the fetched courses — credits, difficulty, and workload are pre-estimated and fully editable
+5. Select courses to import and confirm
+
+**Getting a Canvas access token:**
+
+Canvas → **Account** → **Settings** → scroll to **Approved Integrations** → **New Access Token**
+
+> Your token is used only for the single fetch request and is **never stored** by the application.
+
+**Difficulty estimation from course code:**
+
+| Course level | Estimated difficulty |
+|---|---|
+| 100-level | 4.0 |
+| 200-level | 5.0 |
+| 300-level | 7.0 |
+| 400-level | 8.0 |
+| 500+ (graduate) | 9.0 |
+
+Weekly workload defaults to **2 × credit hours** (Carnegie Unit standard). All values are editable before importing.
 
 ---
 
@@ -189,12 +222,13 @@ Recommendation:
 | GET | `/api/v1/simulations/student/{id}` | Simulation history |
 | DELETE | `/api/v1/simulations/{id}` | Delete simulation |
 | POST | `/api/v1/scenarios/optimize` | Run optimizer |
+| POST | `/api/v1/canvas/preview` | Fetch courses from Canvas LMS |
 
 ---
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, pytest
+- **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, pytest
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts, Axios
 
 ---
@@ -227,6 +261,13 @@ Make sure `frontend/.env.local` exists and contains:
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
+
+**Canvas import returns "Invalid Canvas token"**
+Generate a new token at: Canvas → Account → Settings → New Access Token.
+Make sure you copy the full token string with no trailing spaces.
+
+**Canvas import returns "No active courses found"**
+Canvas only returns courses with `workflow_state = available`. Concluded or unpublished courses are excluded. Check that your current semester courses are published by your instructor.
 
 ---
 
