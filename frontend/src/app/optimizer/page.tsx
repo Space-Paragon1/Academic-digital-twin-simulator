@@ -178,6 +178,38 @@ export default function OptimizerPage() {
                       <span className="font-semibold text-gray-900">{row.value}</span>
                     </div>
                   ))}
+
+                  {/* Per-course study hour allocation */}
+                  {Object.keys(optimizationResult.optimal_study_hours_per_course).length > 0 && (
+                    <div className="pt-3 border-t border-gray-100">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                        Recommended Study Hours / Week
+                      </p>
+                      {Object.entries(optimizationResult.optimal_study_hours_per_course)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([course, hours]) => {
+                          const maxHours = Math.max(
+                            ...Object.values(optimizationResult.optimal_study_hours_per_course)
+                          );
+                          return (
+                            <div key={course} className="mb-2">
+                              <div className="flex items-center justify-between mb-0.5">
+                                <span className="text-xs text-gray-700 truncate max-w-[160px]">{course}</span>
+                                <span className="text-xs font-semibold text-gray-900 ml-2">
+                                  {hours.toFixed(1)}h
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-gray-100">
+                                <div
+                                  className="h-1.5 rounded-full bg-brand-500"
+                                  style={{ width: `${Math.min(100, (hours / maxHours) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
                 </div>
                 <div className="mt-3">
                   <BurnoutBadge risk={optimizationResult.simulation_result.summary.burnout_risk} />
