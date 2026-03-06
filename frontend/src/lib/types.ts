@@ -113,6 +113,28 @@ export interface SimulationResult {
   created_at?: string;
 }
 
+// ── Canvas LMS ────────────────────────────────────────────────────────────────
+
+export interface CanvasCoursePreviewed {
+  canvas_id: number;
+  name: string;
+  course_code: string;
+  credits: number;
+  difficulty_score: number;
+  weekly_workload_hours: number;
+}
+
+export interface CanvasImportPreview {
+  courses: CanvasCoursePreviewed[];
+  count: number;
+}
+
+export interface CanvasPreviewRequest {
+  student_id: number;
+  canvas_url: string;
+  canvas_token: string;
+}
+
 // ── Optimization ──────────────────────────────────────────────────────────────
 
 export interface OptimizationConstraints {
