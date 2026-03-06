@@ -1,5 +1,7 @@
 import axios from "axios";
 import type {
+  CanvasImportPreview,
+  CanvasPreviewRequest,
   Course,
   CourseCreate,
   OptimizationRequest,
@@ -85,6 +87,15 @@ export const simulationsApi = {
 
   delete: (simId: number) =>
     api.delete(`/api/v1/simulations/${simId}`).then((r) => r.data),
+};
+
+// ── Canvas LMS ────────────────────────────────────────────────────────────────
+
+export const canvasApi = {
+  preview: (request: CanvasPreviewRequest) =>
+    api
+      .post<CanvasImportPreview>("/api/v1/canvas/preview", request, { timeout: 20_000 })
+      .then((r) => r.data),
 };
 
 // ── Optimization ──────────────────────────────────────────────────────────────
