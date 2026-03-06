@@ -43,7 +43,12 @@ export const CognitiveLoadChart = memo(function CognitiveLoadChart({ snapshots }
     week: `W${s.week}`,
     load: s.cognitive_load,
     fatigue: parseFloat((s.fatigue_level * 100).toFixed(1)),
+    isExam: s.is_exam_week,
   }));
+
+  const examWeekLabels = snapshots
+    .filter((s) => s.is_exam_week)
+    .map((s) => `W${s.week}`);
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -70,6 +75,16 @@ export const CognitiveLoadChart = memo(function CognitiveLoadChart({ snapshots }
         />
         <ReferenceLine y={40} stroke="#22c55e" strokeDasharray="4 4" opacity={0.6} label={{ value: "Low", position: "right", fontSize: 10, fill: "#22c55e" }} />
         <ReferenceLine y={70} stroke="#f59e0b" strokeDasharray="4 4" opacity={0.6} label={{ value: "Overload", position: "right", fontSize: 10, fill: "#f59e0b" }} />
+        {examWeekLabels.map((w) => (
+          <ReferenceLine
+            key={w}
+            x={w}
+            stroke="#ef4444"
+            strokeDasharray="3 3"
+            strokeOpacity={0.6}
+            label={{ value: "Exam", position: "top", fontSize: 9, fill: "#ef4444" }}
+          />
+        ))}
         <Line
           type="monotone"
           dataKey="load"
