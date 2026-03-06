@@ -130,6 +130,11 @@ export default function ScenariosPage() {
                       <p className="text-xs text-gray-500 mt-0.5">
                         GPA {sim.summary.predicted_gpa_mean.toFixed(2)} · {sim.scenario_config.num_weeks} weeks ·{" "}
                         {sim.scenario_config.study_strategy} study
+                        {sim.created_at && (
+                          <span className="text-gray-400">
+                            {" "}· {new Date(sim.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
