@@ -94,7 +94,7 @@ def get_simulation_runs_for_student(
     return (
         db.query(SimulationRun)
         .filter(SimulationRun.student_id == student_id)
-        .order_by(SimulationRun.id.desc())
+        .order_by(SimulationRun.id.asc())
         .offset(skip)
         .limit(limit)
         .all()
