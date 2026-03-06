@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { StudentProfileForm } from "@/components/forms/StudentProfileForm";
 import { CourseForm } from "@/components/forms/CourseForm";
+import { CanvasImport } from "@/components/forms/CanvasImport";
 import { useStudent } from "@/hooks/useStudent";
 import { useToast } from "@/components/ui/Toaster";
 import { simulationsApi } from "@/lib/api";
@@ -97,6 +98,14 @@ export default function ProfilePage() {
 
       {student && (
         <Card title="Enrolled Courses" subtitle={`${courses.length} course${courses.length !== 1 ? "s" : ""} · ${courses.reduce((s, c) => s + c.credits, 0)} total credits`}>
+          {/* Canvas LMS auto-import */}
+          <div className="mb-4">
+            <CanvasImport
+              studentId={student.id}
+              onImported={() => loadCourses(student.id).catch(() => {})}
+            />
+          </div>
+
           <div className="space-y-3 mb-4">
             {courses.map((course) => (
               <div key={course.id} className="flex items-center justify-between rounded-lg border border-gray-200 p-3">
