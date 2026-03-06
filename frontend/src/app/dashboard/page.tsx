@@ -6,6 +6,15 @@ import { Card } from "@/components/ui/Card";
 import { BurnoutBadge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { Button } from "@/components/ui/Button";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
 import { CognitiveLoadChart } from "@/components/charts/CognitiveLoadChart";
 import { PerformanceTrajectory } from "@/components/charts/PerformanceTrajectory";
 import { BurnoutRiskGauge } from "@/components/charts/BurnoutRiskGauge";
@@ -38,6 +47,7 @@ function trendDir(current: number, previous: number | undefined, threshold = 0.0
 export default function DashboardPage() {
   const [latestResult, setLatestResult] = useState<SimulationResult | null>(null);
   const [prevResult, setPrevResult] = useState<SimulationResult | null>(null);
+  const [allResults, setAllResults] = useState<SimulationResult[]>([]);
   const [targetGpa, setTargetGpa] = useState<number>(3.5);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +63,7 @@ export default function DashboardPage() {
       studentsApi.get(studentId),
     ])
       .then(([results, student]) => {
+        setAllResults(results);
         if (results.length > 0) setLatestResult(results[results.length - 1]);
         if (results.length > 1) setPrevResult(results[results.length - 2]);
         setTargetGpa(student.target_gpa);
@@ -177,6 +188,61 @@ export default function DashboardPage() {
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
           {summary.recommendation}
         </div>
+      )}
+
+      {/* Cross-simulation GPA trend — only shown when there are 2+ runs */}
+      {allResults.length >= 2 && (
+        <Card
+          title="GPA Across Scenarios"
+          subtitle={`Predicted GPA mean across all ${allResults.length} simulations`}
+        >
+          <ResponsiveContainer width="100%" height={140}>
+            <LineChart
+              data={allResults.map((r, i) => ({
+                run: r.scenario_config.scenario_name ?? `#${r.id ?? i + 1}`,
+                gpa: r.summary.predicted_gpa_mean,
+                burnout: r.summary.burnout_risk,
+              }))}
+              margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+            >
+              <XAxis
+                dataKey="run"
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+                interval={0}
+                angle={-20}
+                textAnchor="end"
+                height={36}
+              />
+              <YAxis
+                domain={[0, 4.0]}
+                ticks={[0, 2.0, 3.0, 3.5, 4.0]}
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <Tooltip
+                contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                formatter={(v: number) => [v.toFixed(2), "GPA"]}
+              />
+              <ReferenceLine
+                y={targetGpa}
+                stroke="#10b981"
+                strokeDasharray="4 3"
+                label={{ value: "Target", position: "right", fontSize: 9, fill: "#10b981" }}
+              />
+              <Line
+                type="monotone"
+                dataKey="gpa"
+                stroke="#6366f1"
+                strokeWidth={2}
+                dot={{ r: 4, fill: "#6366f1", stroke: "white", strokeWidth: 1.5 }}
+                activeDot={{ r: 6 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
       )}
 
       {/* Charts grid */}
