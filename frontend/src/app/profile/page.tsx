@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { BurnoutBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { StudentProfileForm } from "@/components/forms/StudentProfileForm";
 import { CourseForm } from "@/components/forms/CourseForm";
 import { useStudent } from "@/hooks/useStudent";
 import { useToast } from "@/components/ui/Toaster";
-import type { CourseCreate, StudentCreate } from "@/lib/types";
+import { simulationsApi } from "@/lib/api";
+import type { CourseCreate, StudentCreate, SimulationResult } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
 
@@ -18,12 +20,14 @@ export default function ProfilePage() {
   const toast = useToast();
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [initDone, setInitDone] = useState(false);
+  const [simHistory, setSimHistory] = useState<SimulationResult[]>([]);
 
   useEffect(() => {
     const stored = localStorage.getItem(STUDENT_ID_KEY);
     if (stored) {
       const id = parseInt(stored);
       loadStudent(id).then(() => loadCourses(id)).catch(() => {});
+      simulationsApi.history(id).then(setSimHistory).catch(() => {});
     }
     setInitDone(true);
   }, []);
@@ -129,6 +133,41 @@ export default function ProfilePage() {
           )}
         </Card>
       )}
+
+      {/* Simulation history stats — only when there are runs */}
+      {student && simHistory.length > 0 && (() => {
+        const gpas = simHistory.map((r) => r.summary.predicted_gpa_mean);
+        const bestGpa = Math.max(...gpas);
+        const latestGpa = gpas[gpas.length - 1];
+        const highRiskCount = simHistory.filter((r) => r.summary.burnout_risk === "HIGH").length;
+        const latestRisk = simHistory[simHistory.length - 1].summary.burnout_risk;
+        const totalCredits = courses.reduce((s, c) => s + c.credits, 0);
+
+        return (
+          <Card title="Simulation History" subtitle={`${simHistory.length} scenario${simHistory.length !== 1 ? "s" : ""} run`}>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {[
+                { label: "Scenarios Run", value: String(simHistory.length) },
+                { label: "Best Predicted GPA", value: bestGpa.toFixed(2) },
+                { label: "Latest GPA", value: latestGpa.toFixed(2) },
+                { label: "High-Risk Runs", value: String(highRiskCount) },
+              ].map((stat) => (
+                <div key={stat.label} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">{stat.label}</p>
+                  <p className="text-xl font-bold text-gray-900 mt-0.5">{stat.value}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+              <span className="text-xs text-gray-500">Latest burnout risk:</span>
+              <BurnoutBadge risk={latestRisk} />
+              {totalCredits > 0 && (
+                <span className="text-xs text-gray-400 ml-auto">{totalCredits} total credits enrolled</span>
+              )}
+            </div>
+          </Card>
+        );
+      })()}
     </div>
   );
 }
