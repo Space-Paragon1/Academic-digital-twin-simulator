@@ -28,6 +28,10 @@ export const PerformanceTrajectory = memo(function PerformanceTrajectory({ resul
     gpa_lower: Math.max(0.0, s.predicted_gpa - std * 0.5),
   }));
 
+  const examWeekLabels = result.weekly_snapshots
+    .filter((s) => s.is_exam_week)
+    .map((s) => `W${s.week}`);
+
   return (
     <ResponsiveContainer width="100%" height={260}>
       <AreaChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
@@ -64,6 +68,16 @@ export const PerformanceTrajectory = memo(function PerformanceTrajectory({ resul
           strokeDasharray="5 5"
           label={{ value: "Target", position: "right", fontSize: 10, fill: "#10b981" }}
         />
+        {examWeekLabels.map((w) => (
+          <ReferenceLine
+            key={w}
+            x={w}
+            stroke="#ef4444"
+            strokeDasharray="3 3"
+            strokeOpacity={0.5}
+            label={{ value: "Exam", position: "top", fontSize: 9, fill: "#ef4444" }}
+          />
+        ))}
         <Area type="monotone" dataKey="gpa_upper" stroke="none" fill="url(#gpaGradient)" />
         <Area type="monotone" dataKey="gpa_lower" stroke="none" fill="white" />
         <Area
