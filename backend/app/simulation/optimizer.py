@@ -118,14 +118,25 @@ def optimize_schedule(
     )
     final_sim = engine.run(config=optimal_config, courses=courses, student=student)
 
+    # Distribute total study hours across courses proportional to workload demand
+    # (weekly_workload_hours reflects both difficulty and credit intensity)
+    last_alloc = final_sim.weekly_snapshots[-1].time_allocation
+    total_study_hours = last_alloc.deep_study_hours + last_alloc.shallow_study_hours
+    total_workload = sum(c.weekly_workload_hours for c in courses)
+    if total_workload > 0:
+        study_per_course = {
+            c.name: round(total_study_hours * (c.weekly_workload_hours / total_workload), 2)
+            for c in courses
+        }
+    else:
+        equal_share = round(total_study_hours / max(len(courses), 1), 2)
+        study_per_course = {c.name: equal_share for c in courses}
+
     return OptimizationResult(
         objective=request.objective,
         optimal_work_hours=optimal_work,
         optimal_sleep_hours=optimal_sleep,
-        optimal_study_hours_per_course={
-            c.name: final_sim.weekly_snapshots[-1].time_allocation.deep_study_hours / max(len(courses), 1)
-            for c in courses
-        },
+        optimal_study_hours_per_course=study_per_course,
         optimal_study_strategy=optimal_strategy,
         predicted_gpa=final_sim.summary.predicted_gpa_mean,
         predicted_burnout_probability=final_sim.summary.burnout_probability,
