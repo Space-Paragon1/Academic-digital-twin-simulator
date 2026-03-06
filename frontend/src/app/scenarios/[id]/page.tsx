@@ -78,12 +78,27 @@ function exportToCsv(result: SimulationResult): void {
   URL.revokeObjectURL(url);
 }
 
+function letterGrade(pct: number): string {
+  if (pct >= 93) return "A";
+  if (pct >= 90) return "A−";
+  if (pct >= 87) return "B+";
+  if (pct >= 83) return "B";
+  if (pct >= 80) return "B−";
+  if (pct >= 77) return "C+";
+  if (pct >= 73) return "C";
+  if (pct >= 70) return "C−";
+  if (pct >= 67) return "D+";
+  if (pct >= 63) return "D";
+  return "F";
+}
+
 export default function ScenarioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [targetGpa, setTargetGpa] = useState<number>(3.5);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -196,8 +211,8 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
         </Card>
       </div>
 
-      {/* Weekly table */}
-      <Card title="Weekly Snapshot Table">
+      {/* Weekly table — click a row to expand per-course breakdown */}
+      <Card title="Weekly Snapshot Table" subtitle="Click any row to see per-course grades and retention">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -211,28 +226,68 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
               </tr>
             </thead>
             <tbody>
-              {weekly_snapshots.map((snap) => (
-                <tr
-                  key={snap.week}
-                  className={`border-b border-gray-100 hover:bg-gray-50 ${snap.is_exam_week ? "bg-red-50" : ""}`}
-                >
-                  <td className="py-2 pr-4 font-medium">
-                    <span>Week {snap.week}</span>
-                    {snap.is_exam_week && (
-                      <span className="ml-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 uppercase tracking-wide">
-                        Exam
-                      </span>
+              {weekly_snapshots.map((snap) => {
+                const isExpanded = expandedWeek === snap.week;
+                const courseNames = Object.keys(snap.course_grades);
+                return (
+                  <>
+                    <tr
+                      key={snap.week}
+                      onClick={() => setExpandedWeek(isExpanded ? null : snap.week)}
+                      className={`border-b border-gray-100 cursor-pointer select-none transition-colors
+                        ${snap.is_exam_week ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}
+                        ${isExpanded ? "border-brand-200 bg-brand-50 hover:bg-brand-50" : ""}`}
+                    >
+                      <td className="py-2 pr-4 font-medium">
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-gray-400 text-xs">{isExpanded ? "▾" : "▸"}</span>
+                          Week {snap.week}
+                        </span>
+                        {snap.is_exam_week && (
+                          <span className="ml-5 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 uppercase tracking-wide">
+                            Exam
+                          </span>
+                        )}
+                      </td>
+                      <td className="text-right py-2 px-4">{snap.predicted_gpa.toFixed(2)}</td>
+                      <td className={`text-right py-2 px-4 font-medium ${snap.cognitive_load > 70 ? "text-red-600" : snap.cognitive_load > 40 ? "text-yellow-600" : "text-green-600"}`}>
+                        {snap.cognitive_load.toFixed(0)}
+                      </td>
+                      <td className="text-right py-2 px-4">{(snap.burnout_probability * 100).toFixed(0)}%</td>
+                      <td className="text-right py-2 px-4">{(snap.retention_score * 100).toFixed(0)}%</td>
+                      <td className="text-right py-2 px-4">{(snap.fatigue_level * 100).toFixed(0)}%</td>
+                    </tr>
+                    {isExpanded && courseNames.length > 0 && (
+                      <tr key={`${snap.week}-detail`} className="border-b border-brand-100 bg-brand-50">
+                        <td colSpan={6} className="px-6 py-3">
+                          <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-2">
+                            Week {snap.week} — Per-Course Breakdown
+                          </p>
+                          <div className="grid grid-cols-2 gap-x-8 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
+                            {courseNames.map((name) => {
+                              const grade = snap.course_grades[name];
+                              const retention = snap.course_retentions?.[name];
+                              return (
+                                <div key={name} className="text-xs">
+                                  <span className="text-gray-600 truncate block">{name}</span>
+                                  <span className="font-semibold text-gray-900">
+                                    {grade.toFixed(1)}% ({letterGrade(grade)})
+                                  </span>
+                                  {retention !== undefined && (
+                                    <span className="text-gray-400 ml-1">
+                                      · ret {(retention * 100).toFixed(0)}%
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="text-right py-2 px-4">{snap.predicted_gpa.toFixed(2)}</td>
-                  <td className={`text-right py-2 px-4 font-medium ${snap.cognitive_load > 70 ? "text-red-600" : snap.cognitive_load > 40 ? "text-yellow-600" : "text-green-600"}`}>
-                    {snap.cognitive_load.toFixed(0)}
-                  </td>
-                  <td className="text-right py-2 px-4">{(snap.burnout_probability * 100).toFixed(0)}%</td>
-                  <td className="text-right py-2 px-4">{(snap.retention_score * 100).toFixed(0)}%</td>
-                  <td className="text-right py-2 px-4">{(snap.fatigue_level * 100).toFixed(0)}%</td>
-                </tr>
-              ))}
+                  </>
+                );
+              })}
             </tbody>
           </table>
         </div>
