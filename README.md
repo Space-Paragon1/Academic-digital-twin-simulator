@@ -95,6 +95,7 @@ Open: `http://localhost:3000`
 ```bash
 cd backend
 pytest tests/ -v
+# 69 tests across 7 suites: API, engine, cognitive load, performance, recovery, retention, time system
 ```
 
 ---
@@ -143,12 +144,13 @@ pytest tests/ -v
 
 | Chart | Used On |
 |-------|---------|
-| GPA Trajectory (area + confidence band) | Dashboard, Scenario Detail, Optimizer |
-| Cognitive Load (line + fatigue overlay) | Dashboard, Scenario Detail |
+| GPA Trajectory (area + confidence band, exam week markers) | Dashboard, Scenario Detail, Optimizer |
+| Cognitive Load (line + fatigue overlay, exam week markers) | Dashboard, Scenario Detail |
 | Burnout Risk Gauge (radial) | Dashboard, Scenario Detail |
 | Time Allocation (pie) | Dashboard, Scenario Detail |
 | Per-Course Grade Trajectories | Dashboard, Scenario Detail, Optimizer |
-| Per-Course Knowledge Retention | Scenario Detail |
+| Per-Course Knowledge Retention (area) | Scenario Detail |
+| GPA Across Scenarios (cross-run sparkline) | Dashboard (2+ runs) |
 | GPA / Load / Burnout Comparison (overlaid lines) | Compare |
 | Per-Course Grade Comparison (table) | Compare |
 
