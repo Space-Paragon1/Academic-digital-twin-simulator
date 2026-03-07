@@ -7,23 +7,40 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   padding?: "sm" | "md" | "lg";
+  accent?: boolean;
 }
 
-const paddingStyles = { sm: "p-4", md: "p-6", lg: "p-8" };
+const paddingStyles = { sm: "p-4", md: "p-5", lg: "p-7" };
 
-export function Card({ title, subtitle, children, className, padding = "md" }: CardProps) {
+export function Card({
+  title,
+  subtitle,
+  children,
+  className,
+  padding = "md",
+  accent = false,
+}: CardProps) {
   return (
     <div
       className={clsx(
-        "rounded-xl border border-gray-200 bg-white shadow-sm",
+        "relative rounded-2xl border border-slate-200 bg-white shadow-card",
+        "transition-all duration-200 hover:shadow-card-md hover:-translate-y-px",
+        accent &&
+          "before:absolute before:inset-x-4 before:top-0 before:h-0.5 before:rounded-full before:bg-gradient-to-r before:from-brand-500 before:to-indigo-500",
         paddingStyles[padding],
         className
       )}
     >
       {(title || subtitle) && (
         <div className="mb-4">
-          {title && <h3 className="text-base font-semibold text-gray-900">{title}</h3>}
-          {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+          {title && (
+            <h3 className="text-[15px] font-semibold text-slate-800 leading-snug">
+              {title}
+            </h3>
+          )}
+          {subtitle && (
+            <p className="mt-0.5 text-[13px] text-slate-500 leading-snug">{subtitle}</p>
+          )}
         </div>
       )}
       {children}
