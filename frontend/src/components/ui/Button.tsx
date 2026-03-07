@@ -10,16 +10,27 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles = {
-  primary: "bg-brand-600 text-white hover:bg-brand-700 disabled:bg-brand-100",
-  secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 disabled:bg-gray-50",
-  danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-red-100",
-  ghost: "text-brand-600 hover:bg-brand-50 disabled:text-gray-300",
+  primary:
+    "bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-sm " +
+    "hover:from-brand-700 hover:to-indigo-700 hover:shadow-md " +
+    "disabled:from-brand-200 disabled:to-indigo-200 disabled:shadow-none",
+  secondary:
+    "bg-white text-slate-700 border border-slate-300 shadow-sm " +
+    "hover:bg-slate-50 hover:border-slate-400 " +
+    "disabled:bg-slate-50 disabled:text-slate-400 disabled:border-slate-200",
+  danger:
+    "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-sm " +
+    "hover:from-red-700 hover:to-rose-700 " +
+    "disabled:from-red-200 disabled:to-rose-200",
+  ghost:
+    "text-brand-600 hover:bg-brand-50 hover:text-brand-700 " +
+    "disabled:text-slate-300",
 };
 
 const sizeStyles = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "px-3 py-1.5 text-[13px] rounded-lg",
+  md: "px-4 py-2 text-sm rounded-xl",
+  lg: "px-6 py-2.5 text-[15px] rounded-xl",
 };
 
 export function Button({
@@ -35,7 +46,9 @@ export function Button({
     <button
       className={twMerge(
         clsx(
-          "inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:cursor-not-allowed",
+          "inline-flex items-center justify-center gap-2 font-medium transition-all duration-150",
+          "focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2",
+          "disabled:cursor-not-allowed active:scale-[0.98]",
           variantStyles[variant],
           sizeStyles[size],
           className
