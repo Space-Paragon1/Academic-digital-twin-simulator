@@ -380,7 +380,7 @@ export default function ComparePage() {
             {[{ sim: simA, label: labelA, color: "indigo" }, { sim: simB, label: labelB, color: "amber" }].map(
               ({ sim, label, color }) =>
                 sim.summary.recommendation ? (
-                  <div key={label} className={RECOMMENDATION_CLASS[color]}>
+                  <div key={label} className={RECOMMENDATION_CLASS[color as keyof typeof RECOMMENDATION_CLASS]}>
                     <p className="font-semibold mb-1">{label}</p>
                     {sim.summary.recommendation}
                   </div>
