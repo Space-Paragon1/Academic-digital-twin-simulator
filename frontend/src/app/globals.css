@@ -2,11 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+/* ── Custom scrollbar ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ── Base styles ──────────────────────────────────────────────────────────── */
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2;
+  }
 }
 
-body {
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+/* ── Utility layer extras ─────────────────────────────────────────────────── */
+@layer utilities {
+  .gradient-brand {
+    @apply bg-gradient-to-r from-brand-600 to-indigo-600;
+  }
+  .gradient-brand-text {
+    @apply bg-gradient-to-r from-brand-600 to-indigo-500 bg-clip-text text-transparent;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md;
+  }
+  .glass {
+    @apply bg-white/80 backdrop-blur-md;
+  }
+  /* Animated gradient background for hero */
+  .mesh-gradient {
+    background: radial-gradient(ellipse 80% 60% at 20% -10%, #bfdbfe 0%, transparent 60%),
+                radial-gradient(ellipse 60% 50% at 85% 20%, #e0e7ff 0%, transparent 55%),
+                radial-gradient(ellipse 50% 60% at 50% 100%, #ddd6fe 0%, transparent 60%),
+                #f8fafc;
+  }
 }
