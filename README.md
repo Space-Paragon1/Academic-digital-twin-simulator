@@ -95,8 +95,8 @@ Open: `http://localhost:3000`
 
 ```bash
 cd backend
-pytest tests/ -v
-# 69 tests across 7 suites: API, engine, cognitive load, performance, recovery, retention, time system
+python -m pytest tests/ -v
+# 72 tests across 7 suites: API, engine, cognitive load, performance, recovery, retention, time system
 ```
 
 ---
@@ -183,6 +183,7 @@ Weekly workload defaults to **2 × credit hours** (Carnegie Unit standard). All 
 | Time Allocation (pie) | Dashboard, Scenario Detail |
 | Per-Course Grade Trajectories | Dashboard, Scenario Detail, Optimizer |
 | Per-Course Knowledge Retention (area) | Scenario Detail |
+| Knowledge Retention Heatmap (per-course × per-week color grid) | Scenario Detail |
 | GPA Across Scenarios (cross-run sparkline) | Dashboard (2+ runs) |
 | GPA / Load / Burnout Comparison (overlaid lines) | Compare |
 | Per-Course Grade Comparison (table) | Compare |
@@ -228,7 +229,7 @@ Recommendation:
 
 ## Tech Stack
 
-- **Backend**: Python 3.12, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, pytest
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, pytest
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts, Axios
 
 ---
