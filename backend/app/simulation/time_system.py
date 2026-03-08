@@ -108,6 +108,15 @@ def allocate_time(
         social_hours = available_for_study * 0.6
         available_for_study = 0.0
 
+    # Cap study at 2× course workload demand; redistribute excess to social/leisure.
+    # Allows study_ratio up to 2.0 in the performance model (needed for A-range grades)
+    # while preventing the 80+h/week inflation that caused perpetual 100% cognitive load.
+    total_workload_demand = sum(c.weekly_workload_hours for c in courses)
+    study_cap = total_workload_demand * 2.0
+    if study_cap > 0 and available_for_study > study_cap:
+        social_hours = social_hours + (available_for_study - study_cap)
+        available_for_study = study_cap
+
     # Split study time by strategy
     if study_strategy == "spaced":
         deep_ratio = 0.70
