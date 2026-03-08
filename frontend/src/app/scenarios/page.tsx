@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { BurnoutBadge } from "@/components/ui/Badge";
@@ -14,12 +14,14 @@ import { useToast } from "@/components/ui/Toaster";
 import type { ScenarioConfig } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
+const RERUN_KEY = "adt_rerun_config";
 
 export default function ScenariosPage() {
   const { student, courses, loadStudent, loadCourses } = useStudent();
   const { runSimulation, result, isLoading: simLoading, error: simError } = useSimulation();
   const { history, loadHistory, deleteSimulation } = useScenario();
   const toast = useToast();
+  const [rerunConfig, setRerunConfig] = useState<Partial<ScenarioConfig> | undefined>(undefined);
 
   useEffect(() => {
     const stored = localStorage.getItem(STUDENT_ID_KEY);
@@ -28,6 +30,12 @@ export default function ScenariosPage() {
       loadStudent(id).catch(() => {});
       loadCourses(id).catch(() => {});
       loadHistory(id);
+    }
+    // Pick up any "Re-run with tweaks" config written by Scenario Detail
+    const rerun = sessionStorage.getItem(RERUN_KEY);
+    if (rerun) {
+      try { setRerunConfig(JSON.parse(rerun)); } catch { /* ignore */ }
+      sessionStorage.removeItem(RERUN_KEY);
     }
   }, []);
 
@@ -63,12 +71,28 @@ export default function ScenariosPage() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Builder panel */}
       <div className="lg:col-span-1">
-        <Card title="New Scenario" subtitle="Configure and run a simulation">
+        <Card
+          title={rerunConfig ? "Tweak & Re-run" : "New Scenario"}
+          subtitle={rerunConfig ? "Pre-filled from previous scenario — adjust and run" : "Configure and run a simulation"}
+        >
+          {rerunConfig && (
+            <div className="mb-4 flex items-center justify-between rounded-xl border border-brand-200 bg-brand-50 px-3 py-2">
+              <p className="text-xs text-brand-700 font-medium">Loaded from previous scenario</p>
+              <button
+                type="button"
+                onClick={() => setRerunConfig(undefined)}
+                className="text-xs text-brand-400 hover:text-brand-700 transition-colors"
+              >
+                Clear
+              </button>
+            </div>
+          )}
           <ScenarioBuilder
             studentId={student.id}
             courses={courses}
             onRun={handleRun}
             isLoading={simLoading}
+            initialConfig={rerunConfig}
           />
         </Card>
       </div>
