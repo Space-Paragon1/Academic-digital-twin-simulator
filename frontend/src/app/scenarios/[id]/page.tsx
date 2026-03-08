@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { BurnoutBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +14,7 @@ import { BurnoutRiskGauge } from "@/components/charts/BurnoutRiskGauge";
 import { TimeAllocationChart } from "@/components/charts/TimeAllocationChart";
 import { CourseGradesChart } from "@/components/charts/CourseGradesChart";
 import { CourseRetentionChart } from "@/components/charts/CourseRetentionChart";
+import { RetentionHeatmap } from "@/components/charts/RetentionHeatmap";
 import { simulationsApi, studentsApi } from "@/lib/api";
 import { useToast } from "@/components/ui/Toaster";
 import type { SimulationResult, WeeklySnapshot } from "@/lib/types";
@@ -94,12 +96,18 @@ function letterGrade(pct: number): string {
 
 export default function ScenarioDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [targetGpa, setTargetGpa] = useState<number>(3.5);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const toast = useToast();
+
+  const handleRerun = (sim: SimulationResult) => {
+    sessionStorage.setItem("adt_rerun_config", JSON.stringify(sim.scenario_config));
+    router.push("/scenarios");
+  };
 
   useEffect(() => {
     simulationsApi
@@ -138,6 +146,13 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleRerun(result)}
+          >
+            Re-run with Tweaks
+          </Button>
           <Button
             variant="secondary"
             size="sm"
@@ -210,6 +225,14 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
           <CourseRetentionChart snapshots={weekly_snapshots} />
         </Card>
       </div>
+
+      {/* Knowledge Retention Heatmap */}
+      <Card
+        title="Knowledge Retention Heatmap"
+        subtitle="Per-course retention % each week — red = low, green = high, ★ = exam weeks"
+      >
+        <RetentionHeatmap snapshots={weekly_snapshots} />
+      </Card>
 
       {/* Weekly table — click a row to expand per-course breakdown */}
       <Card title="Weekly Snapshot Table" subtitle="Click any row to see per-course grades and retention">
