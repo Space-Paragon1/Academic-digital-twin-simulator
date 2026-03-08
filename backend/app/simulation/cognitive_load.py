@@ -44,12 +44,19 @@ def compute_weekly_load(
     if not courses:
         return 0.0
 
+    # Cap effective study hours per course at 2× its weekly workload demand.
+    # Without this, low-difficulty courses with lots of free time produce
+    # study_hours >> normalizer, inflating load to 100 every week regardless
+    # of sleep or difficulty settings.
     raw_load = sum(
-        course.difficulty_score * study_hours_per_course.get(course.id, 0.0)
+        course.difficulty_score * min(
+            study_hours_per_course.get(course.id, 0.0),
+            max(course.weekly_workload_hours * 2.0, 6.0),
+        )
         for course in courses
     )
-    # Normalizer: 10 difficulty × 3h study per course = 30 per course
-    normalizer = len(courses) * 30.0
+    # Normalizer: 10 difficulty × 6h study per course = 60 per course
+    normalizer = len(courses) * 60.0
     raw_load = (raw_load / normalizer) * MAX_LOAD if normalizer > 0 else 0.0
 
     # Sequencing penalty: taking ≥ 2 courses with difficulty > 7 simultaneously
