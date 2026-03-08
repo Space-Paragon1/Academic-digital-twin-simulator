@@ -9,12 +9,20 @@ interface ScenarioBuilderProps {
   courses: Course[];
   onRun: (config: ScenarioConfig) => Promise<void>;
   isLoading?: boolean;
+  initialConfig?: Partial<ScenarioConfig>;
 }
 
 const STRATEGY_OPTIONS: { value: StudyStrategy; label: string; desc: string }[] = [
-  { value: "spaced", label: "Spaced", desc: "Best for long-term retention" },
-  { value: "mixed", label: "Mixed", desc: "Balance of deep & surface study" },
+  { value: "spaced",   label: "Spaced",   desc: "Best for long-term retention" },
+  { value: "mixed",    label: "Mixed",    desc: "Balance of deep & surface study" },
   { value: "cramming", label: "Cramming", desc: "High short-term, fast decay" },
+];
+
+const PRESETS: { label: string; desc: string; numWeeks: number; workHours: number; sleepHours: number; strategy: StudyStrategy }[] = [
+  { label: "Light",      desc: "No job, full sleep",    numWeeks: 16, workHours: 0,  sleepHours: 8.0, strategy: "spaced"   },
+  { label: "Standard",   desc: "Part-time, 7h sleep",   numWeeks: 16, workHours: 10, sleepHours: 7.0, strategy: "spaced"   },
+  { label: "Working",    desc: "20h job, mixed study",  numWeeks: 16, workHours: 20, sleepHours: 7.0, strategy: "mixed"    },
+  { label: "Overloaded", desc: "30h job, cramming",     numWeeks: 16, workHours: 30, sleepHours: 6.0, strategy: "cramming" },
 ];
 
 function defaultExamWeeks(numWeeks: number): number[] {
@@ -22,14 +30,29 @@ function defaultExamWeeks(numWeeks: number): number[] {
   return [midterm, numWeeks].filter((w, i, arr) => arr.indexOf(w) === i);
 }
 
-export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: ScenarioBuilderProps) {
-  const [numWeeks, setNumWeeks] = useState(16);
-  const [workHours, setWorkHours] = useState(10);
-  const [sleepHours, setSleepHours] = useState(7.0);
-  const [strategy, setStrategy] = useState<StudyStrategy>("spaced");
-  const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>(courses.map((c) => c.id));
-  const [scenarioName, setScenarioName] = useState("");
-  const [examWeeks, setExamWeeks] = useState<number[]>(defaultExamWeeks(16));
+export function ScenarioBuilder({ studentId, courses, onRun, isLoading, initialConfig }: ScenarioBuilderProps) {
+  const [numWeeks,          setNumWeeks]          = useState(initialConfig?.num_weeks             ?? 16);
+  const [workHours,         setWorkHours]          = useState(initialConfig?.work_hours_per_week   ?? 10);
+  const [sleepHours,        setSleepHours]         = useState(initialConfig?.sleep_target_hours    ?? 7.0);
+  const [strategy,          setStrategy]           = useState<StudyStrategy>(initialConfig?.study_strategy ?? "spaced");
+  const [selectedCourseIds, setSelectedCourseIds]  = useState<number[]>(
+    initialConfig?.include_course_ids?.length
+      ? initialConfig.include_course_ids
+      : courses.map((c) => c.id)
+  );
+  const [scenarioName, setScenarioName] = useState(initialConfig?.scenario_name ?? "");
+  const [examWeeks,    setExamWeeks]    = useState<number[]>(
+    initialConfig?.exam_weeks ?? defaultExamWeeks(initialConfig?.num_weeks ?? 16)
+  );
+
+  const applyPreset = (preset: typeof PRESETS[number]) => {
+    setNumWeeks(preset.numWeeks);
+    setWorkHours(preset.workHours);
+    setSleepHours(preset.sleepHours);
+    setStrategy(preset.strategy);
+    setExamWeeks(defaultExamWeeks(preset.numWeeks));
+    setScenarioName("");
+  };
 
   const handleNumWeeksChange = (weeks: number) => {
     setNumWeeks(weeks);
@@ -50,86 +73,119 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const autoName = scenarioName.trim()
+      || `${numWeeks}wk · ${workHours}h work · ${sleepHours}h sleep · ${strategy}`;
     await onRun({
-      student_id: studentId,
-      num_weeks: numWeeks,
-      work_hours_per_week: workHours,
-      sleep_target_hours: sleepHours,
-      study_strategy: strategy,
-      include_course_ids: selectedCourseIds,
-      scenario_name: scenarioName || undefined,
-      exam_weeks: examWeeks,
+      student_id:           studentId,
+      num_weeks:            numWeeks,
+      work_hours_per_week:  workHours,
+      sleep_target_hours:   sleepHours,
+      study_strategy:       strategy,
+      include_course_ids:   selectedCourseIds,
+      scenario_name:        autoName,
+      exam_weeks:           examWeeks,
     });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+
+      {/* Presets */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Scenario Name (optional)</label>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Quick Presets</p>
+        <div className="grid grid-cols-2 gap-2">
+          {PRESETS.map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => applyPreset(p)}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left hover:border-brand-300 hover:bg-brand-50 transition-colors"
+            >
+              <p className="text-xs font-semibold text-slate-700">{p.label}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{p.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Scenario name */}
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">
+          Scenario Name
+          <span className="ml-1 text-xs font-normal text-slate-400">(auto-generated if blank)</span>
+        </label>
         <input
           type="text"
           value={scenarioName}
           onChange={(e) => setScenarioName(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          placeholder="e.g. 18 Credits + Part-time Job"
+          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+          placeholder={`${numWeeks}wk · ${workHours}h work · ${strategy}`}
         />
       </div>
 
+      {/* Semester length */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-slate-700 mb-2">
           Semester Length: <span className="font-semibold text-brand-600">{numWeeks} weeks</span>
         </label>
         <input type="range" min={4} max={20} step={1} value={numWeeks}
-          onChange={(e) => handleNumWeeksChange(parseInt(e.target.value))} className="w-full accent-brand-600" />
-        <div className="flex justify-between text-xs text-gray-400 mt-1"><span>4 wks</span><span>20 wks</span></div>
+          aria-label="Semester length in weeks"
+          onChange={(e) => handleNumWeeksChange(parseInt(e.target.value))}
+          className="w-full accent-brand-600" />
+        <div className="flex justify-between text-xs text-slate-400 mt-1"><span>4 wks</span><span>20 wks</span></div>
       </div>
 
+      {/* Work hours */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-slate-700 mb-2">
           Weekly Work Hours: <span className="font-semibold text-brand-600">{workHours}h</span>
         </label>
         <input type="range" min={0} max={60} step={1} value={workHours}
-          onChange={(e) => setWorkHours(parseInt(e.target.value))} className="w-full accent-brand-600" />
-        <div className="flex justify-between text-xs text-gray-400 mt-1"><span>0h</span><span>60h</span></div>
+          aria-label="Weekly work hours"
+          onChange={(e) => setWorkHours(parseInt(e.target.value))}
+          className="w-full accent-brand-600" />
+        <div className="flex justify-between text-xs text-slate-400 mt-1"><span>0h</span><span>60h</span></div>
       </div>
 
+      {/* Sleep */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-slate-700 mb-2">
           Sleep Target: <span className="font-semibold text-brand-600">{sleepHours}h/night</span>
         </label>
         <input type="range" min={4} max={12} step={0.5} value={sleepHours}
-          onChange={(e) => setSleepHours(parseFloat(e.target.value))} className="w-full accent-brand-600" />
-        <div className="flex justify-between text-xs text-gray-400 mt-1"><span>4h</span><span>12h</span></div>
+          aria-label="Sleep target hours per night"
+          onChange={(e) => setSleepHours(parseFloat(e.target.value))}
+          className="w-full accent-brand-600" />
+        <div className="flex justify-between text-xs text-slate-400 mt-1"><span>4h</span><span>12h</span></div>
       </div>
 
+      {/* Study strategy */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Study Strategy</label>
+        <label className="block text-sm font-medium text-slate-700 mb-2">Study Strategy</label>
         <div className="grid grid-cols-3 gap-2">
           {STRATEGY_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               onClick={() => setStrategy(opt.value)}
-              className={`rounded-lg border p-3 text-left transition-colors ${
+              className={`rounded-xl border p-3 text-left transition-colors ${
                 strategy === opt.value
                   ? "border-brand-500 bg-brand-50 text-brand-700"
-                  : "border-gray-200 hover:border-gray-300"
+                  : "border-slate-200 hover:border-slate-300 bg-white"
               }`}
             >
               <p className="text-sm font-medium">{opt.label}</p>
-              <p className="text-xs text-gray-500 mt-0.5">{opt.desc}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Exam weeks picker */}
+      {/* Exam weeks */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-slate-700 mb-1">
           Exam Weeks{" "}
-          <span className="text-xs font-normal text-gray-500">
-            (1.3× load · reduced recovery time)
-          </span>
+          <span className="text-xs font-normal text-slate-400">(1.3× load · reduced recovery)</span>
         </label>
         <div className="flex flex-wrap gap-1.5 mt-2">
           {Array.from({ length: numWeeks }, (_, i) => i + 1).map((w) => {
@@ -139,10 +195,10 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
                 key={w}
                 type="button"
                 onClick={() => toggleExamWeek(w)}
-                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                className={`rounded-lg px-2 py-0.5 text-xs font-medium transition-colors border ${
                   active
-                    ? "bg-red-100 text-red-700 border border-red-300"
-                    : "bg-gray-100 text-gray-500 border border-gray-200 hover:border-gray-300"
+                    ? "bg-red-50 text-red-700 border-red-300"
+                    : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300"
                 }`}
               >
                 W{w}
@@ -150,20 +206,21 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
             );
           })}
         </div>
-        <p className="text-xs text-gray-400 mt-1.5">
+        <p className="text-xs text-slate-400 mt-1.5">
           {examWeeks.length === 0
-            ? "No exam weeks — uniform pressure all semester"
+            ? "No exam weeks — uniform pressure"
             : `Exam weeks: ${examWeeks.map((w) => `W${w}`).join(", ")}`}
         </p>
       </div>
 
+      {/* Courses */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Courses ({selectedCourseIds.length} selected)
+        <label className="block text-sm font-medium text-slate-700 mb-2">
+          Courses <span className="text-slate-400 font-normal">({selectedCourseIds.length} selected)</span>
         </label>
         <div className="space-y-2">
           {courses.map((course) => (
-            <label key={course.id} className="flex items-center gap-3 cursor-pointer rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
+            <label key={course.id} className="flex items-center gap-3 cursor-pointer rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition-colors">
               <input
                 type="checkbox"
                 checked={selectedCourseIds.includes(course.id)}
@@ -171,20 +228,21 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading }: Scenar
                 className="accent-brand-600"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{course.name}</p>
-                <p className="text-xs text-gray-500">{course.credits} cr · Difficulty {course.difficulty_score}/10</p>
+                <p className="text-sm font-medium text-slate-800">{course.name}</p>
+                <p className="text-xs text-slate-400">{course.credits} cr · Difficulty {course.difficulty_score}/10</p>
               </div>
             </label>
           ))}
         </div>
         {courses.length === 0 && (
-          <p className="text-sm text-gray-500 italic">No courses yet — add courses in your profile.</p>
+          <p className="text-sm text-slate-400 italic">No courses yet — add them in your profile.</p>
         )}
       </div>
 
       {selectedCourseIds.length === 0 && courses.length > 0 && (
         <p className="text-xs text-amber-600 text-center">Select at least one course to run a simulation.</p>
       )}
+
       <Button type="submit" isLoading={isLoading} className="w-full" size="lg"
         disabled={selectedCourseIds.length === 0}>
         Run Simulation
