@@ -26,11 +26,11 @@ from app.simulation.engine import SimulationEngine
 SEED_EMAIL = "alex.demo@university.edu"
 
 COURSES = [
-    CourseCreate(name="Data Structures & Algorithms", credits=3, difficulty_score=7.5, weekly_workload_hours=6.0),
-    CourseCreate(name="Calculus II",                  credits=4, difficulty_score=8.0, weekly_workload_hours=8.0),
-    CourseCreate(name="Technical Writing",             credits=3, difficulty_score=3.5, weekly_workload_hours=3.0),
-    CourseCreate(name="Introduction to Physics",       credits=4, difficulty_score=6.5, weekly_workload_hours=7.0),
-    CourseCreate(name="African American History",      credits=3, difficulty_score=4.0, weekly_workload_hours=3.5),
+    CourseCreate(name="Data Structures & Algorithms", credits=3, difficulty_score=6.5, weekly_workload_hours=5.0),
+    CourseCreate(name="College Algebra",              credits=3, difficulty_score=5.0, weekly_workload_hours=4.0),
+    CourseCreate(name="Technical Writing",             credits=3, difficulty_score=3.0, weekly_workload_hours=2.5),
+    CourseCreate(name="Introduction to Psychology",   credits=3, difficulty_score=4.0, weekly_workload_hours=3.0),
+    CourseCreate(name="African American History",      credits=3, difficulty_score=3.5, weekly_workload_hours=2.5),
 ]
 
 SCENARIOS = [
@@ -93,7 +93,7 @@ def main():
         print("Adding courses...")
         courses = []
         for course_data in COURSES:
-            course = crud.add_course(db, student.id, course_data)
+            course = crud.create_course(db, student.id, course_data)
             courses.append(course)
             print(f"  Added course id={course.id}: {course.name}")
 
