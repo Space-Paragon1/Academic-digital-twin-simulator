@@ -9,7 +9,7 @@ import type { AdvisorMessage, SimulationResult } from "@/lib/types";
 const INITIAL_MESSAGE: AdvisorMessage = {
   role: "assistant",
   content:
-    "Hi! I'm your AI academic advisor. I can help you interpret your simulation results, understand burnout risk, and optimize your schedule. Select a simulation above for context-aware advice, then ask me anything.",
+    "Hi! I'm your AI academic advisor. I've loaded your latest simulation results as context. Ask me anything about your GPA prediction, burnout risk, or how to adjust your schedule.",
 };
 
 export default function AdvisorPage() {
@@ -27,7 +27,14 @@ export default function AdvisorPage() {
     if (!id) return;
     const sid = parseInt(id);
     setStudentId(sid);
-    simulationsApi.history(sid).then(setSimulations).catch(() => {});
+    simulationsApi.history(sid).then((sims) => {
+      setSimulations(sims);
+      // Auto-select the most recent simulation for richer context
+      if (sims.length > 0) {
+        const latest = sims[sims.length - 1];
+        setSelectedSimId(latest.id);
+      }
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
