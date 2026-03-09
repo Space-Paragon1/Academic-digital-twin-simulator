@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: academic-digital-twin-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite:///./academic_twin.db
+      - key: DEBUG
+        value: "false"
+      - key: CORS_ORIGINS
+        value: https://your-frontend.vercel.app
+      - key: ANTHROPIC_API_KEY
+        sync: false   # set manually in Render dashboard
