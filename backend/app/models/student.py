@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 from sqlalchemy import DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -11,6 +12,8 @@ class Student(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    # Nullable so seed/legacy accounts without passwords still work
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, default=None)
     target_gpa: Mapped[float] = mapped_column(Float, default=3.5)
     weekly_work_hours: Mapped[float] = mapped_column(Float, default=0.0)
     sleep_target_hours: Mapped[float] = mapped_column(Float, default=7.0)

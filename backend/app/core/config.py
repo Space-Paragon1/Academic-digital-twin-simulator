@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     # JSON-decode it. Parse into a list with the `cors_origins` property.
     CORS_ORIGINS: str = "http://localhost:3000"
     ANTHROPIC_API_KEY: str | None = None
+    # Used to sign JWT tokens. Override in production with a long random string.
+    SECRET_KEY: str = "dev-secret-change-in-production"
 
     @property
     def cors_origins(self) -> list[str]:
