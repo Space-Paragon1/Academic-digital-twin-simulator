@@ -1,24 +1,27 @@
 # Academic Digital Twin Simulator
 
-> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Includes an AI advisor powered by Claude, Monte Carlo confidence bands, goal targeting, and multi-student monitoring.
+> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Includes JWT authentication, an AI advisor powered by Claude, Monte Carlo confidence bands, goal targeting, multi-student monitoring, and Canvas LMS integration.
 
 ## Architecture
 
 ```
 Academic-digital-twin-simulator/
 ├── backend/          Python · FastAPI · SQLAlchemy · numpy/scipy · Anthropic SDK
-└── frontend/         Next.js 15 · TypeScript · Tailwind CSS · Recharts
+├── frontend/         Next.js 15 · TypeScript · Tailwind CSS · Recharts
+├── DEPLOY.md         Railway + Vercel deployment guide
+└── DEMO.md           5-minute demo script for professors / hackathons
 ```
 
 ```
                     ┌──────────────────────────────────────────┐
                     │             Next.js Frontend              │
                     │  Dashboard · Scenarios · Compare          │
-                    │  Optimizer · Advisor · Profile            │
+                    │  Optimizer · Advisor · Profile · Login    │
                     └────────────┬─────────────────────────────┘
                                  │  REST API
                     ┌────────────▼─────────────────────────────┐
                     │           FastAPI Backend                 │
+                    │   /api/v1/auth  (register · login · me)  │
                     │   /api/v1/students                        │
                     │   /api/v1/courses                         │
                     │   /api/v1/simulations                     │
@@ -78,17 +81,27 @@ API docs: `http://localhost:8000/docs`
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start the dev server
 npm run dev
 ```
 
 Open: `http://localhost:3000`
 
 > **Both servers must be running simultaneously.** Keep each in its own terminal.
+
+### Seed Demo Data
+
+```bash
+cd backend
+.venv\Scripts\Activate.ps1
+python seed.py
+```
+
+Prints the demo student ID. Paste it in the browser console:
+```js
+localStorage.setItem('adt_student_id', '3')
+```
+Then refresh — the app loads "Alex Demo" with 5 courses and 4 pre-run scenarios.
 
 ### Run Tests
 
@@ -97,25 +110,35 @@ cd backend
 python -m pytest tests/ -v
 ```
 
+85 tests, all passing.
+
 ---
 
 ## Pages
 
 | Page | Route | Description |
 |------|-------|-------------|
+| **Home** | `/` | Landing page with feature overview and stats |
+| **Login / Register** | `/login` | JWT-based authentication — create an account or sign in |
 | **Dashboard** | `/dashboard` | Latest simulation with trend indicators vs previous run |
 | **Profile** | `/profile` | Student profile, course enrollment, and Canvas LMS import |
 | **Scenarios** | `/scenarios` | Run simulations, view history, manage results |
-| **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo bands, actual grade tracker, PDF export |
+| **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo bands, actual grade tracker, CSV export |
 | **Compare** | `/compare` | Side-by-side overlay of two scenarios |
 | **Optimizer** | `/optimizer` | Differential evolution schedule optimizer |
-| **AI Chat** | `/advisor` | Claude-powered academic advisor with simulation context |
+| **AI Chat** | `/advisor` | Claude-powered advisor — auto-loads your latest simulation as context |
 | **Goal Targeting** | `/advisor/goal` | Find the schedule needed to hit a target GPA |
-| **All Students** | `/advisor/multi` | Multi-student burnout risk and GPA overview (advisor view) |
+| **All Students** | `/advisor/multi` | PIN-protected multi-student burnout risk and GPA overview |
 
 ---
 
 ## Features
+
+### Authentication
+- **JWT-based register + login** at `/login` — bcrypt-hashed passwords, 7-day tokens
+- Signed-in user name shown in the navbar with a logout button
+- **Backward compatible** — seed/guest accounts accessed via student ID still work without a password
+- Default admin PIN for the All Students view: `1234`
 
 ### Simulation Engine
 - **5-subsystem tick loop** run once per simulated week: Time System → Cognitive Load → Retention → Performance → Recovery
@@ -128,12 +151,16 @@ python -m pytest tests/ -v
 Run 200 randomized simulations with sleep jitter as the variance proxy. Produces **p10 / p50 / p90 GPA confidence bands** displayed as a shaded area on the GPA trajectory chart.
 
 ### AI Advisor (Claude)
-Natural-language chat powered by `claude-haiku-4-5-20251001`. The advisor receives the student's profile, enrolled courses, and selected simulation results as context, then answers questions about burnout risk, study strategy, and schedule optimization.
+Natural-language chat powered by `claude-haiku-4-5-20251001`.
+
+- **Auto-context**: the latest simulation is automatically loaded — no manual selection needed
+- **Rich context**: Claude receives weekly GPA and cognitive load trends (early vs late semester), worst burnout week, sleep deficit, and peak overload weeks — not just the summary
+- Answers questions about burnout risk, study strategy, and schedule changes
 
 Requires an Anthropic API key — see [AI Advisor Setup](#ai-advisor-setup).
 
 ### Goal Targeting
-Grid search over study strategy × sleep hours × work hours to find the minimum schedule adjustments needed to achieve a target GPA. Returns recommended work hours, sleep, and strategy along with actionable tips.
+Grid search over study strategy × sleep hours × work hours to find the minimum schedule adjustments needed to achieve a target GPA. Returns recommended work hours, sleep, and strategy with actionable tips.
 
 ### Actual vs Predicted Tracking
 Log real weekly grades per course during the semester. The scenario detail page overlays actual grades (red dashed line) on the predicted trajectory and shows a comparison table with Δ deviation.
@@ -143,11 +170,11 @@ The weekly snapshot table flags high-risk weeks automatically:
 - `⚠ Reduce load` — cognitive load exceeded threshold
 - `🔴 High burnout risk` — burnout probability > 60%
 
-### PDF Export
-One-click `window.print()` export of the full scenario detail report.
+### CSV Export
+Download the full week-by-week snapshot table as CSV — every metric, every course, ready for your own analysis.
 
 ### Multi-Student View
-Advisors can monitor all student profiles sorted by burnout risk then GPA gap. Summary banner shows how many students are at HIGH risk and how many are on track for their target GPA.
+PIN-protected view (default PIN: `1234`) for advisors to monitor all student profiles sorted by burnout risk then GPA gap. Summary banner shows how many students are at HIGH risk and how many are on track for their target GPA.
 
 ### Canvas LMS Integration
 Import enrolled courses directly from your institution's Canvas instance.
@@ -155,7 +182,9 @@ Import enrolled courses directly from your institution's Canvas instance.
 1. On the **Profile** page, click **Import from Canvas**
 2. Enter your Canvas base URL (e.g. `https://yourschool.instructure.com`)
 3. Paste a Canvas personal access token
-4. Review, edit, and import courses
+4. Review, edit credits/difficulty, and import
+
+Supports **paginated responses** — students with 50+ course histories get all their active enrollments, not just the first page.
 
 **Getting a Canvas token:** Canvas → Account → Settings → Approved Integrations → New Access Token
 
@@ -173,6 +202,9 @@ Import enrolled courses directly from your institution's Canvas instance.
 
 Weekly workload defaults to **2 × credit hours** (Carnegie Unit standard). All values are editable before importing.
 
+### Dark Mode
+Toggle with the moon/sun icon in the navbar. Preference persisted in `localStorage` across sessions. System preference (`prefers-color-scheme`) is used on first visit.
+
 ---
 
 ## AI Advisor Setup
@@ -189,6 +221,25 @@ ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
 5. Restart the backend server
 
 If the key is missing or invalid, the advisor page shows a clear error banner — all other features continue to work normally.
+
+---
+
+## Deployment
+
+See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
+
+**Summary:**
+- **Backend** → Railway (`railway.toml` is pre-configured — push, set env vars, done)
+- **Frontend** → Vercel (`vercel.json` is pre-configured — import from GitHub, set `NEXT_PUBLIC_API_URL`, done)
+
+**Required production env vars:**
+
+| Variable | Where | Value |
+|----------|-------|-------|
+| `ANTHROPIC_API_KEY` | Railway | Your Anthropic key |
+| `CORS_ORIGINS` | Railway | `https://your-app.vercel.app` |
+| `SECRET_KEY` | Railway | Random 32-char string (`python -c "import secrets; print(secrets.token_hex(32))"`) |
+| `NEXT_PUBLIC_API_URL` | Vercel | `https://your-backend.railway.app` |
 
 ---
 
@@ -245,6 +296,9 @@ If the key is missing or invalid, the advisor page shows a clear error banner �
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| POST | `/api/v1/auth/register` | Register a new account — returns JWT |
+| POST | `/api/v1/auth/login` | Sign in with email + password — returns JWT |
+| GET | `/api/v1/auth/me` | Validate a JWT and return student info |
 | GET | `/api/v1/students/` | List all students |
 | POST | `/api/v1/students/` | Create student profile |
 | GET | `/api/v1/students/{id}` | Get student profile |
@@ -260,15 +314,15 @@ If the key is missing or invalid, the advisor page shows a clear error banner �
 | POST | `/api/v1/simulations/{id}/actual-grades` | Save actual weekly grades |
 | GET | `/api/v1/simulations/{id}/actual-grades` | Get actual grades |
 | POST | `/api/v1/scenarios/optimize` | Run schedule optimizer |
-| POST | `/api/v1/advisor/chat` | AI advisor chat (requires API key) |
+| POST | `/api/v1/advisor/chat` | AI advisor chat (auto-loads latest sim context) |
 | POST | `/api/v1/advisor/goal-target` | Goal targeting grid search |
-| POST | `/api/v1/canvas/preview` | Fetch courses from Canvas LMS |
+| POST | `/api/v1/canvas/preview` | Fetch courses from Canvas LMS (paginated) |
 
 ---
 
 ## Tech Stack
 
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, pytest
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, python-jose, passlib, pytest
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts, Axios
 
 ---
@@ -295,14 +349,14 @@ netstat -ano | findstr :8000
 taskkill /F /PID <pid>
 ```
 
-**Frontend shows stale or blank pages (OneDrive + Next.js conflict)**
-OneDrive can corrupt `.next` symlinks. Fix:
+**Frontend shows "Internal Service Error" or blank pages**
+The `.next` build cache is stale. Clear it and restart:
 
 ```powershell
 cd frontend
 Remove-Item -Recurse -Force .next
 npm run dev
-# After first build, pin the folder to prevent future corruption:
+# After first build, prevent future OneDrive corruption:
 attrib +P .next /S /D
 ```
 
@@ -312,6 +366,9 @@ Make sure `NEXT_PUBLIC_API_URL` is set. Create `frontend/.env.local` if it doesn
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
+
+**Login returns "Invalid email or password"**
+The seed student (`alex.demo@university.edu`) has no password — it was created before auth was added. Use the guest path: paste `localStorage.setItem('adt_student_id', '3')` in the browser console. To create a real account, go to `/login` → Register.
 
 **AI advisor returns "Invalid API key"**
 Re-copy your key from console.anthropic.com → Settings → API Keys. Make sure there are no spaces or line breaks in `backend/.env`.
