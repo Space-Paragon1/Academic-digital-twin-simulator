@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
-import type { Course, ScenarioConfig, StudyStrategy } from "@/lib/types";
+import type { Course, ScenarioConfig, SleepSchedule, StudyStrategy } from "@/lib/types";
 
 interface ScenarioBuilderProps {
   studentId: number;
@@ -45,6 +45,13 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading, initialC
     initialConfig?.exam_weeks ?? defaultExamWeeks(initialConfig?.num_weeks ?? 16)
   );
 
+  // Advanced options
+  const [showAdvanced,        setShowAdvanced]        = useState(false);
+  const [extracurricularHours, setExtracurricularHours] = useState(initialConfig?.extracurricular_hours ?? 0);
+  const [sleepSchedule,        setSleepSchedule]        = useState<SleepSchedule>(initialConfig?.sleep_schedule ?? "fixed");
+  const [dropCourseId,         setDropCourseId]         = useState<number | null>(initialConfig?.drop_course_id ?? null);
+  const [dropAtWeek,           setDropAtWeek]           = useState<number>(initialConfig?.drop_at_week ?? 8);
+
   const applyPreset = (preset: typeof PRESETS[number]) => {
     setNumWeeks(preset.numWeeks);
     setWorkHours(preset.workHours);
@@ -76,14 +83,18 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading, initialC
     const autoName = scenarioName.trim()
       || `${numWeeks}wk · ${workHours}h work · ${sleepHours}h sleep · ${strategy}`;
     await onRun({
-      student_id:           studentId,
-      num_weeks:            numWeeks,
-      work_hours_per_week:  workHours,
-      sleep_target_hours:   sleepHours,
-      study_strategy:       strategy,
-      include_course_ids:   selectedCourseIds,
-      scenario_name:        autoName,
-      exam_weeks:           examWeeks,
+      student_id:              studentId,
+      num_weeks:               numWeeks,
+      work_hours_per_week:     workHours,
+      sleep_target_hours:      sleepHours,
+      study_strategy:          strategy,
+      include_course_ids:      selectedCourseIds,
+      scenario_name:           autoName,
+      exam_weeks:              examWeeks,
+      extracurricular_hours:   extracurricularHours,
+      sleep_schedule:          sleepSchedule,
+      drop_course_id:          dropCourseId,
+      drop_at_week:            dropCourseId ? dropAtWeek : null,
     });
   };
 
@@ -236,6 +247,102 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading, initialC
         </div>
         {courses.length === 0 && (
           <p className="text-sm text-slate-400 italic">No courses yet — add them in your profile.</p>
+        )}
+      </div>
+
+      {/* ── Advanced Options ─────────────────────────────────────── */}
+      <div className="border border-slate-200 rounded-xl overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-sm font-medium text-slate-700"
+        >
+          <span>Advanced Options</span>
+          <span className="text-slate-400">{showAdvanced ? "▲" : "▼"}</span>
+        </button>
+
+        {showAdvanced && (
+          <div className="px-4 py-4 space-y-5 bg-white">
+            {/* Extracurricular hours */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Extracurricular Hours/Week:{" "}
+                <span className="font-semibold text-brand-600">{extracurricularHours}h</span>
+              </label>
+              <input
+                type="range" min={0} max={20} step={1} value={extracurricularHours}
+                aria-label="Extracurricular hours per week"
+                onChange={(e) => setExtracurricularHours(parseInt(e.target.value))}
+                className="w-full accent-brand-600"
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-1"><span>0h</span><span>20h</span></div>
+              <p className="text-xs text-slate-400 mt-1">Clubs, sports, Greek life — reduces available study time.</p>
+            </div>
+
+            {/* Sleep schedule */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Sleep Schedule</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: "fixed" as SleepSchedule, label: "Fixed", desc: `${sleepHours}h every night` },
+                  { value: "variable" as SleepSchedule, label: "Variable", desc: "6.5h weekdays, 9h weekends" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSleepSchedule(opt.value)}
+                    className={`rounded-xl border p-3 text-left transition-colors ${
+                      sleepSchedule === opt.value
+                        ? "border-brand-500 bg-brand-50 text-brand-700"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{opt.label}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Course drop */}
+            {courses.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Drop a Course Mid-Semester
+                  <span className="ml-1 text-xs font-normal text-slate-400">(optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    value={dropCourseId ?? ""}
+                    onChange={(e) => setDropCourseId(e.target.value ? parseInt(e.target.value) : null)}
+                    className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                  >
+                    <option value="">— No drop —</option>
+                    {courses
+                      .filter((c) => selectedCourseIds.includes(c.id))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                  </select>
+                  {dropCourseId && (
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-slate-500 whitespace-nowrap">After week</label>
+                      <input
+                        type="number" min={1} max={numWeeks - 1} value={dropAtWeek}
+                        onChange={(e) => setDropAtWeek(parseInt(e.target.value))}
+                        className="w-16 rounded-xl border border-slate-300 px-2 py-2 text-sm text-center focus:border-brand-500 focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+                {dropCourseId && (
+                  <p className="text-xs text-amber-600 mt-1.5">
+                    Course dropped after week {dropAtWeek} — freed study time redistributed to remaining courses.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 
