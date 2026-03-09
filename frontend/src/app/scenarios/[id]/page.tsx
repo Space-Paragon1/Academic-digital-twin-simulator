@@ -15,48 +15,35 @@ import { TimeAllocationChart } from "@/components/charts/TimeAllocationChart";
 import { CourseGradesChart } from "@/components/charts/CourseGradesChart";
 import { CourseRetentionChart } from "@/components/charts/CourseRetentionChart";
 import { RetentionHeatmap } from "@/components/charts/RetentionHeatmap";
-import { simulationsApi, studentsApi } from "@/lib/api";
+import { simulationsApi, studentsApi, monteCarloApi, actualGradesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/Toaster";
-import type { SimulationResult, WeeklySnapshot } from "@/lib/types";
+import type {
+  ActualGradeEntry,
+  MonteCarloResult,
+  SimulationResult,
+  WeeklySnapshot,
+} from "@/lib/types";
 
 function exportToCsv(result: SimulationResult): void {
   const { scenario_config, summary, weekly_snapshots } = result;
 
-  // Collect all course names for dynamic columns
-  const courseNames = Object.keys(weekly_snapshots[0]?.course_grades ?? {});
+  const courseNames    = Object.keys(weekly_snapshots[0]?.course_grades ?? {});
   const retentionNames = Object.keys(weekly_snapshots[0]?.course_retentions ?? {});
 
   const headers = [
-    "week",
-    "predicted_gpa",
-    "cognitive_load",
-    "burnout_probability",
-    "fatigue_level",
-    "retention_score",
-    "class_hours",
-    "work_hours",
-    "sleep_hours",
-    "deep_study_hours",
-    "shallow_study_hours",
-    "recovery_hours",
-    "social_hours",
+    "week", "predicted_gpa", "cognitive_load", "burnout_probability",
+    "fatigue_level", "retention_score", "class_hours", "work_hours",
+    "sleep_hours", "deep_study_hours", "shallow_study_hours", "recovery_hours", "social_hours",
     ...courseNames.map((n) => `grade_${n.replace(/\s+/g, "_")}`),
     ...retentionNames.map((n) => `retention_${n.replace(/\s+/g, "_")}`),
   ];
 
   const rows: (string | number)[][] = weekly_snapshots.map((snap: WeeklySnapshot) => [
-    snap.week,
-    snap.predicted_gpa,
-    snap.cognitive_load,
-    snap.burnout_probability,
-    snap.fatigue_level,
-    snap.retention_score,
-    snap.time_allocation.class_hours,
-    snap.time_allocation.work_hours,
-    snap.time_allocation.sleep_hours,
-    snap.time_allocation.deep_study_hours,
-    snap.time_allocation.shallow_study_hours,
-    snap.time_allocation.recovery_hours,
+    snap.week, snap.predicted_gpa, snap.cognitive_load, snap.burnout_probability,
+    snap.fatigue_level, snap.retention_score,
+    snap.time_allocation.class_hours, snap.time_allocation.work_hours,
+    snap.time_allocation.sleep_hours, snap.time_allocation.deep_study_hours,
+    snap.time_allocation.shallow_study_hours, snap.time_allocation.recovery_hours,
     snap.time_allocation.social_hours,
     ...courseNames.map((n) => snap.course_grades[n] ?? ""),
     ...retentionNames.map((n) => snap.course_retentions?.[n]?.toFixed(3) ?? ""),
@@ -71,11 +58,10 @@ function exportToCsv(result: SimulationResult): void {
   ];
 
   const blob = new Blob([csvLines.join("\n")], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const filename = `scenario_${result.id ?? "export"}_${scenario_config.study_strategy}.csv`;
-  a.href = url;
-  a.download = filename;
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `scenario_${result.id ?? "export"}_${scenario_config.study_strategy}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -94,14 +80,32 @@ function letterGrade(pct: number): string {
   return "F";
 }
 
+function interventionTag(snap: WeeklySnapshot): string | null {
+  if (snap.burnout_probability > 0.6)  return "🔴 High burnout risk";
+  if (snap.cognitive_load > 70)        return "⚠ Reduce load";
+  return null;
+}
+
 export default function ScenarioDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const router = useRouter();
-  const [result, setResult] = useState<SimulationResult | null>(null);
-  const [targetGpa, setTargetGpa] = useState<number>(3.5);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
+  const { id }    = use(params);
+  const router    = useRouter();
+  const [result,        setResult]        = useState<SimulationResult | null>(null);
+  const [targetGpa,     setTargetGpa]     = useState<number>(3.5);
+  const [isLoading,     setIsLoading]     = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
+  const [expandedWeek,  setExpandedWeek]  = useState<number | null>(null);
+
+  // Monte Carlo state
+  const [mcResult,    setMcResult]    = useState<MonteCarloResult | null>(null);
+  const [mcLoading,   setMcLoading]   = useState(false);
+
+  // Actual grades state
+  const [actualGrades,     setActualGrades]     = useState<ActualGradeEntry[]>([]);
+  const [newGradeCourse,   setNewGradeCourse]   = useState("");
+  const [newGradeWeek,     setNewGradeWeek]     = useState(1);
+  const [newGradeValue,    setNewGradeValue]    = useState(85);
+  const [gradeSaving,      setGradeSaving]      = useState(false);
+
   const toast = useToast();
 
   const handleRerun = (sim: SimulationResult) => {
@@ -110,16 +114,65 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
   };
 
   useEffect(() => {
+    const simId = parseInt(id);
     simulationsApi
-      .get(parseInt(id))
+      .get(simId)
       .then((res) => {
         setResult(res);
-        return studentsApi.get(res.scenario_config.student_id);
+        if (res.weekly_snapshots[0]) {
+          setNewGradeCourse(Object.keys(res.weekly_snapshots[0].course_grades)[0] ?? "");
+        }
+        return Promise.all([
+          studentsApi.get(res.scenario_config.student_id),
+          actualGradesApi.get(simId).catch(() => ({ grades: [] })),
+        ]);
       })
-      .then((student) => setTargetGpa(student.target_gpa))
+      .then(([student, gradesResp]) => {
+        setTargetGpa(student.target_gpa);
+        setActualGrades(gradesResp.grades);
+      })
       .catch(() => setError("Simulation not found."))
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  const runMonteCarlo = async () => {
+    if (!result) return;
+    setMcLoading(true);
+    try {
+      const mc = await monteCarloApi.run({
+        scenario_config: result.scenario_config,
+        monte_carlo: { runs: 200, study_variance: 0.15 },
+      });
+      setMcResult(mc);
+      toast.success(`Monte Carlo complete — ${mc.runs} runs`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Monte Carlo failed.");
+    } finally {
+      setMcLoading(false);
+    }
+  };
+
+  const addActualGrade = async () => {
+    if (!result?.id || !newGradeCourse) return;
+    const newEntry: ActualGradeEntry = {
+      course_name:  newGradeCourse,
+      week:         newGradeWeek,
+      actual_grade: newGradeValue,
+    };
+    const updated = [...actualGrades.filter(
+      (g) => !(g.course_name === newGradeCourse && g.week === newGradeWeek)
+    ), newEntry];
+    setGradeSaving(true);
+    try {
+      const resp = await actualGradesApi.save(result.id, updated);
+      setActualGrades(resp.grades);
+      toast.success("Actual grade saved.");
+    } catch {
+      toast.error("Failed to save grade.");
+    } finally {
+      setGradeSaving(false);
+    }
+  };
 
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>;
   if (error || !result) return (
@@ -130,11 +183,12 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
   );
 
   const { summary, weekly_snapshots, scenario_config } = result;
-  const lastSnap = weekly_snapshots[weekly_snapshots.length - 1];
+  const lastSnap    = weekly_snapshots[weekly_snapshots.length - 1];
+  const courseNames = Object.keys(weekly_snapshots[0]?.course_grades ?? {});
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <Link href="/scenarios" className="text-sm text-brand-600 hover:underline">← Scenarios</Link>
           <h1 className="text-2xl font-bold text-gray-900 mt-1">
@@ -143,29 +197,22 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
           <p className="text-sm text-gray-500">
             {scenario_config.num_weeks} weeks · {scenario_config.work_hours_per_week}h work ·{" "}
             {scenario_config.sleep_target_hours}h sleep · {scenario_config.study_strategy} study
+            {scenario_config.extracurricular_hours ? ` · ${scenario_config.extracurricular_hours}h extracurricular` : ""}
+            {scenario_config.sleep_schedule === "variable" ? " · variable sleep" : ""}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleRerun(result)}
-          >
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="secondary" size="sm" onClick={() => handleRerun(result)}>
             Re-run with Tweaks
           </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              try {
-                exportToCsv(result);
-                toast.success("CSV exported successfully.");
-              } catch {
-                toast.error("Failed to export CSV. Please try again.");
-              }
-            }}
-          >
+          <Button variant="secondary" size="sm" onClick={() => {
+            try { exportToCsv(result); toast.success("CSV exported."); }
+            catch { toast.error("Export failed."); }
+          }}>
             Export CSV
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => window.print()}>
+            Export PDF
           </Button>
           <BurnoutBadge risk={summary.burnout_risk} />
         </div>
@@ -174,10 +221,10 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
       {/* Summary row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: "Predicted GPA", value: summary.predicted_gpa_mean.toFixed(2), sub: `${summary.predicted_gpa_min.toFixed(2)}–${summary.predicted_gpa_max.toFixed(2)}` },
-          { label: "Study Required", value: `${summary.required_study_hours_per_week}h/wk`, sub: "To meet course demand" },
-          { label: "Sleep Deficit", value: `${summary.sleep_deficit_hours}h/wk`, sub: "Below 7h/night baseline" },
-          { label: "Overload Weeks", value: String(summary.peak_overload_weeks.length), sub: summary.peak_overload_weeks.length > 0 ? `Weeks ${summary.peak_overload_weeks.slice(0, 4).join(", ")}` : "None detected" },
+          { label: "Predicted GPA",   value: summary.predicted_gpa_mean.toFixed(2), sub: `${summary.predicted_gpa_min.toFixed(2)}–${summary.predicted_gpa_max.toFixed(2)}` },
+          { label: "Study Required",  value: `${summary.required_study_hours_per_week}h/wk`, sub: "To meet course demand" },
+          { label: "Sleep Deficit",   value: `${summary.sleep_deficit_hours}h/wk`, sub: "Below 7h/night baseline" },
+          { label: "Overload Weeks",  value: String(summary.peak_overload_weeks.length), sub: summary.peak_overload_weeks.length > 0 ? `Weeks ${summary.peak_overload_weeks.slice(0, 4).join(", ")}` : "None detected" },
         ].map((stat) => (
           <Card key={stat.label} padding="sm">
             <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{stat.label}</p>
@@ -197,10 +244,18 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
         <Card title="Cognitive Load" subtitle="Weekly load score with fatigue overlay">
           <CognitiveLoadChart snapshots={weekly_snapshots} />
         </Card>
-        <Card title="GPA Trajectory" subtitle="Predicted GPA week over week">
-          <PerformanceTrajectory result={result} targetGpa={targetGpa} />
+        <Card
+          title="GPA Trajectory"
+          subtitle={mcResult ? `Predicted GPA with p10/p50/p90 bands (${mcResult.runs} MC runs)` : "Predicted GPA week over week"}
+        >
+          <PerformanceTrajectory
+            result={result}
+            targetGpa={targetGpa}
+            monteCarlo={mcResult ?? undefined}
+            actualGrades={actualGrades.length > 0 ? actualGrades : undefined}
+          />
         </Card>
-        <Card title="Burnout Risk Gauge" subtitle={`Final semester probability`}>
+        <Card title="Burnout Risk Gauge" subtitle="Final semester probability">
           <div className="flex justify-center">
             <BurnoutRiskGauge probability={summary.burnout_probability} risk={summary.burnout_risk} />
           </div>
@@ -210,32 +265,144 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
         </Card>
       </div>
 
-      {/* Per-course charts side-by-side */}
+      {/* Monte Carlo */}
+      <Card title="Monte Carlo Confidence Analysis" subtitle="Run 200 simulations with random variance to model real-world uncertainty">
+        {mcResult ? (
+          <div className="flex flex-wrap gap-6 mt-2 text-sm">
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Pessimistic (p10)</p>
+              <p className="text-2xl font-bold text-red-600">{mcResult.p10_gpa.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Median (p50)</p>
+              <p className="text-2xl font-bold text-gray-900">{mcResult.p50_gpa.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Optimistic (p90)</p>
+              <p className="text-2xl font-bold text-green-600">{mcResult.p90_gpa.toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide">Avg Burnout Prob</p>
+              <p className="text-2xl font-bold text-gray-900">{(mcResult.burnout_probability_mean * 100).toFixed(0)}%</p>
+            </div>
+            <div className="self-end">
+              <Button variant="secondary" size="sm" onClick={runMonteCarlo} isLoading={mcLoading}>
+                Re-run
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 mt-2">
+            <Button onClick={runMonteCarlo} isLoading={mcLoading}>
+              {mcLoading ? "Running 200 simulations…" : "Run Monte Carlo (200 sims)"}
+            </Button>
+            {mcLoading && <p className="text-xs text-gray-400">This takes ~10 seconds.</p>}
+          </div>
+        )}
+      </Card>
+
+      {/* Per-course charts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card
-          title="Per-Course Grade Trajectories"
-          subtitle="Predicted grade % per course over the semester"
-        >
+        <Card title="Per-Course Grade Trajectories" subtitle="Predicted grade % per course over the semester">
           <CourseGradesChart snapshots={weekly_snapshots} />
         </Card>
-        <Card
-          title="Per-Course Knowledge Retention"
-          subtitle="Cumulative retention score per course (0–100%)"
-        >
+        <Card title="Per-Course Knowledge Retention" subtitle="Cumulative retention score per course (0–100%)">
           <CourseRetentionChart snapshots={weekly_snapshots} />
         </Card>
       </div>
 
-      {/* Knowledge Retention Heatmap */}
-      <Card
-        title="Knowledge Retention Heatmap"
-        subtitle="Per-course retention % each week — red = low, green = high, ★ = exam weeks"
-      >
+      <Card title="Knowledge Retention Heatmap" subtitle="Per-course retention % each week — red = low, green = high, ★ = exam weeks">
         <RetentionHeatmap snapshots={weekly_snapshots} />
       </Card>
 
-      {/* Weekly table — click a row to expand per-course breakdown */}
-      <Card title="Weekly Snapshot Table" subtitle="Click any row to see per-course grades and retention">
+      {/* Actual grades tracker */}
+      <Card title="Track Actual Grades" subtitle="Log your real grades to compare against predictions">
+        <div className="mt-3 space-y-4">
+          <div className="flex flex-wrap gap-3 items-end">
+            <div>
+              <label htmlFor="grade-course" className="block text-xs font-medium text-gray-600 mb-1">Course</label>
+              <select
+                id="grade-course"
+                title="Course for actual grade"
+                value={newGradeCourse}
+                onChange={(e) => setNewGradeCourse(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-brand-500 focus:outline-none"
+              >
+                {courseNames.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="grade-week" className="block text-xs font-medium text-gray-600 mb-1">Week</label>
+              <input
+                id="grade-week"
+                title="Week number"
+                type="number" min={1} max={scenario_config.num_weeks} value={newGradeWeek}
+                onChange={(e) => setNewGradeWeek(parseInt(e.target.value))}
+                className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-center focus:border-brand-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label htmlFor="grade-value" className="block text-xs font-medium text-gray-600 mb-1">Grade (%)</label>
+              <input
+                id="grade-value"
+                title="Actual grade percentage"
+                type="number" min={0} max={100} value={newGradeValue}
+                onChange={(e) => setNewGradeValue(parseInt(e.target.value))}
+                className="w-20 rounded-lg border border-gray-300 px-2 py-1.5 text-sm text-center focus:border-brand-500 focus:outline-none"
+              />
+            </div>
+            <Button size="sm" onClick={addActualGrade} isLoading={gradeSaving}>
+              Save Grade
+            </Button>
+          </div>
+
+          {actualGrades.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200 text-gray-500 uppercase">
+                    <th className="text-left py-1.5 pr-4">Course</th>
+                    <th className="text-right py-1.5 px-3">Week</th>
+                    <th className="text-right py-1.5 px-3">Actual</th>
+                    <th className="text-right py-1.5 px-3">Predicted</th>
+                    <th className="text-right py-1.5 px-3">Δ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {actualGrades
+                    .slice()
+                    .sort((a, b) => a.week - b.week || a.course_name.localeCompare(b.course_name))
+                    .map((g, i) => {
+                      const snap     = weekly_snapshots.find((s) => s.week === g.week);
+                      const predicted = snap?.course_grades[g.course_name];
+                      const delta    = predicted !== undefined ? g.actual_grade - predicted : null;
+                      return (
+                        <tr key={i} className="border-b border-gray-100">
+                          <td className="py-1.5 pr-4 text-gray-700">{g.course_name}</td>
+                          <td className="text-right py-1.5 px-3 text-gray-500">W{g.week}</td>
+                          <td className="text-right py-1.5 px-3 font-medium">
+                            {g.actual_grade.toFixed(1)}% ({letterGrade(g.actual_grade)})
+                          </td>
+                          <td className="text-right py-1.5 px-3 text-gray-500">
+                            {predicted !== undefined ? `${predicted.toFixed(1)}%` : "—"}
+                          </td>
+                          <td className={`text-right py-1.5 px-3 font-medium ${
+                            delta === null ? "text-gray-400" : delta >= 0 ? "text-green-600" : "text-red-600"
+                          }`}>
+                            {delta !== null ? `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Weekly snapshot table */}
+      <Card title="Weekly Snapshot Table" subtitle="Click any row to see per-course breakdown · ⚠ = action recommended">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -246,12 +413,14 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
                 <th className="text-right py-2 px-4">Burnout</th>
                 <th className="text-right py-2 px-4">Retention</th>
                 <th className="text-right py-2 px-4">Fatigue</th>
+                <th className="text-left py-2 pl-4">Action</th>
               </tr>
             </thead>
             <tbody>
               {weekly_snapshots.map((snap) => {
                 const isExpanded = expandedWeek === snap.week;
-                const courseNames = Object.keys(snap.course_grades);
+                const snapCourses = Object.keys(snap.course_grades);
+                const tag        = interventionTag(snap);
                 return (
                   <>
                     <tr
@@ -279,16 +448,25 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
                       <td className="text-right py-2 px-4">{(snap.burnout_probability * 100).toFixed(0)}%</td>
                       <td className="text-right py-2 px-4">{(snap.retention_score * 100).toFixed(0)}%</td>
                       <td className="text-right py-2 px-4">{(snap.fatigue_level * 100).toFixed(0)}%</td>
+                      <td className="text-left py-2 pl-4 text-xs">
+                        {tag ? (
+                          <span className={`font-medium ${tag.startsWith("🔴") ? "text-red-600" : "text-amber-600"}`}>
+                            {tag}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
                     </tr>
-                    {isExpanded && courseNames.length > 0 && (
+                    {isExpanded && snapCourses.length > 0 && (
                       <tr key={`${snap.week}-detail`} className="border-b border-brand-100 bg-brand-50">
-                        <td colSpan={6} className="px-6 py-3">
+                        <td colSpan={7} className="px-6 py-3">
                           <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-2">
                             Week {snap.week} — Per-Course Breakdown
                           </p>
                           <div className="grid grid-cols-2 gap-x-8 gap-y-1 sm:grid-cols-3 lg:grid-cols-4">
-                            {courseNames.map((name) => {
-                              const grade = snap.course_grades[name];
+                            {snapCourses.map((name) => {
+                              const grade     = snap.course_grades[name];
                               const retention = snap.course_retentions?.[name];
                               return (
                                 <div key={name} className="text-xs">
