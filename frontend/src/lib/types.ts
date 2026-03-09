@@ -57,6 +57,7 @@ export interface CourseCreate {
 export type StudyStrategy = "spaced" | "cramming" | "mixed";
 export type BurnoutRisk = "LOW" | "MEDIUM" | "HIGH";
 export type OptimizationObjective = "maximize_gpa" | "minimize_burnout" | "balanced";
+export type SleepSchedule = "fixed" | "variable";
 
 export interface ScenarioConfig {
   student_id: number;
@@ -67,6 +68,11 @@ export interface ScenarioConfig {
   include_course_ids: number[];
   scenario_name?: string;
   exam_weeks: number[];
+  // Advanced options
+  extracurricular_hours?: number;
+  sleep_schedule?: SleepSchedule;
+  drop_course_id?: number | null;
+  drop_at_week?: number | null;
 }
 
 export interface TimeAllocation {
@@ -159,4 +165,79 @@ export interface OptimizationResult {
   predicted_gpa: number;
   predicted_burnout_probability: number;
   simulation_result: SimulationResult;
+}
+
+// ── Monte Carlo ───────────────────────────────────────────────────────────────
+
+export interface MonteCarloConfig {
+  runs: number;
+  study_variance: number;
+}
+
+export interface MonteCarloRequest {
+  scenario_config: ScenarioConfig;
+  monte_carlo: MonteCarloConfig;
+}
+
+export interface MonteCarloResult {
+  runs: number;
+  p10_gpa: number;
+  p50_gpa: number;
+  p90_gpa: number;
+  burnout_probability_mean: number;
+  weekly_p10: number[];
+  weekly_p50: number[];
+  weekly_p90: number[];
+}
+
+// ── Goal Targeting ────────────────────────────────────────────────────────────
+
+export interface GoalTargetRequest {
+  student_id: number;
+  target_gpa: number;
+  num_weeks: number;
+  max_work_hours: number;
+  exam_weeks: number[];
+}
+
+export interface GoalTargetResult {
+  achievable: boolean;
+  required_study_hours_per_week: number;
+  recommended_work_hours: number;
+  recommended_sleep_hours: number;
+  recommended_strategy: string;
+  predicted_gpa: number;
+  gap_to_target: number;
+  tips: string[];
+}
+
+// ── AI Advisor ────────────────────────────────────────────────────────────────
+
+export interface AdvisorMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface AdvisorRequest {
+  student_id: number;
+  simulation_id?: number;
+  messages: AdvisorMessage[];
+}
+
+export interface AdvisorResponse {
+  reply: string;
+  simulation_context_used: boolean;
+}
+
+// ── Actual Grades ─────────────────────────────────────────────────────────────
+
+export interface ActualGradeEntry {
+  course_name: string;
+  week: number;
+  actual_grade: number;
+}
+
+export interface ActualGradesResponse {
+  saved: number;
+  grades: ActualGradeEntry[];
 }
