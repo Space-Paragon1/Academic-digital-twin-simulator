@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { BurnoutBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { ScenarioBuilder } from "@/components/forms/ScenarioBuilder";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useStudent } from "@/hooks/useStudent";
@@ -17,7 +18,7 @@ const STUDENT_ID_KEY = "adt_student_id";
 const RERUN_KEY = "adt_rerun_config";
 
 export default function ScenariosPage() {
-  const { student, courses, loadStudent, loadCourses } = useStudent();
+  const { student, courses, isLoading: studentLoading, loadStudent, loadCourses } = useStudent();
   const { runSimulation, result, isLoading: simLoading, error: simError } = useSimulation();
   const { history, loadHistory, deleteSimulation } = useScenario();
   const toast = useToast();
@@ -57,6 +58,10 @@ export default function ScenariosPage() {
       toast.error("Failed to delete simulation.");
     }
   };
+
+  if (studentLoading) {
+    return <PageSkeleton />;
+  }
 
   if (!student) {
     return (

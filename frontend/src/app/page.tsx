@@ -82,17 +82,17 @@ export default function Home() {
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="flex flex-col items-center justify-center text-center px-6 pt-20 pb-16 animate-fade-up">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-3.5 py-1 text-xs font-semibold text-brand-700 mb-7 shadow-sm">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-brand-900/30 px-3.5 py-1 text-xs font-semibold text-brand-700 dark:text-brand-400 mb-7 shadow-sm">
           <span className="h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
           Academic Decision Intelligence
         </span>
 
-        <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900 leading-[1.1] mb-5 max-w-3xl">
+        <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 leading-[1.1] mb-5 max-w-3xl">
           Your Academic{" "}
           <span className="gradient-brand-text">Digital Twin</span>
         </h1>
 
-        <p className="text-lg text-slate-500 mb-10 max-w-xl leading-relaxed">
+        <p className="text-lg text-slate-500 dark:text-slate-400 mb-10 max-w-xl leading-relaxed">
           Run what-if simulations on your semester before it happens. Predict GPA,
           burnout risk, and knowledge retention — then optimise.
         </p>
@@ -111,11 +111,11 @@ export default function Home() {
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-slate-200 bg-slate-200 shadow-card w-full max-w-2xl mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-700 shadow-card w-full max-w-2xl mx-auto">
           {STATS.map((s) => (
-            <div key={s.label} className="bg-white px-6 py-4 text-center">
+            <div key={s.label} className="bg-white dark:bg-slate-900 px-6 py-4 text-center">
               <p className="text-2xl font-bold gradient-brand-text">{s.value}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{s.label}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
@@ -123,20 +123,20 @@ export default function Home() {
 
       {/* ── Features ─────────────────────────────────────────────────────── */}
       <section className="px-6 pb-20 max-w-5xl mx-auto animate-fade-in">
-        <h2 className="text-center text-sm font-semibold uppercase tracking-widest text-slate-400 mb-8">
-          What's inside
+        <h2 className="text-center text-sm font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-8">
+          What&apos;s inside
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {FEATURES.map((f) => (
             <div
               key={f.title}
-              className="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow-card hover:shadow-card-md hover:-translate-y-px transition-all duration-200"
+              className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur p-5 shadow-card hover:shadow-card-md hover:-translate-y-px transition-all duration-200"
             >
               <div className={`inline-flex items-center justify-center rounded-xl border p-2 mb-3 ${f.color}`}>
                 {f.icon}
               </div>
-              <h3 className="text-sm font-semibold text-slate-800 mb-1">{f.title}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">{f.body}</p>
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">{f.title}</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{f.body}</p>
             </div>
           ))}
         </div>
