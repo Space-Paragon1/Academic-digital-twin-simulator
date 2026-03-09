@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.db.database import Base, engine
-from app.api.routes import students, courses, simulations, scenarios, canvas
+from app.api.routes import students, courses, simulations, scenarios, canvas, advisor
 
 settings = get_settings()
 
@@ -39,6 +39,7 @@ app.include_router(courses.router, prefix="/api/v1")
 app.include_router(simulations.router, prefix="/api/v1")
 app.include_router(scenarios.router, prefix="/api/v1")
 app.include_router(canvas.router, prefix="/api/v1")
+app.include_router(advisor.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["health"])
