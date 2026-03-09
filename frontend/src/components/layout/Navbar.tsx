@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, LogIn, LogOut } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -20,6 +21,7 @@ export function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggle } = useTheme();
+  const { user, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-sm">
@@ -65,15 +67,44 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Dark mode toggle */}
-        <button
-          type="button"
-          onClick={toggle}
-          aria-label="Toggle dark mode"
-          className="hidden sm:flex items-center justify-center h-8 w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-        >
-          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-        </button>
+        {/* Right side controls */}
+        <div className="hidden sm:flex items-center gap-1">
+          {/* Dark mode toggle */}
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label="Toggle dark mode"
+            className="flex items-center justify-center h-8 w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+
+          {/* Auth button */}
+          {user ? (
+            <div className="flex items-center gap-2 ml-1">
+              <span className="text-xs text-slate-500 dark:text-slate-400 max-w-[120px] truncate hidden md:block">
+                {user.name}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                aria-label="Sign out"
+                title="Sign out"
+                className="flex items-center justify-center h-8 w-8 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <LogOut size={15} />
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="flex items-center gap-1.5 rounded-lg px-3 h-8 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ml-1"
+            >
+              <LogIn size={14} />
+              Sign In
+            </Link>
+          )}
+        </div>
 
         {/* Mobile hamburger */}
         <button

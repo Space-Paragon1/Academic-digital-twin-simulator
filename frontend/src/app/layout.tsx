@@ -5,6 +5,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { ToastProvider } from "@/components/ui/Toaster";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="bg-slate-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100 antialiased transition-colors duration-200" suppressHydrationWarning>
         <ThemeProvider>
+          <AuthProvider>
           <ToastProvider>
             <Navbar />
             <div className="flex min-h-[calc(100vh-3.5rem)]">
@@ -29,6 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">{children}</main>
             </div>
           </ToastProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
