@@ -1,49 +1,48 @@
 # Academic Digital Twin Simulator
 
-> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Courses can be imported directly from Canvas LMS.
+> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Includes an AI advisor powered by Claude, Monte Carlo confidence bands, goal targeting, and multi-student monitoring.
 
 ## Architecture
 
 ```
 Academic-digital-twin-simulator/
-├── backend/          Python · FastAPI · SQLAlchemy · numpy/scipy
+├── backend/          Python · FastAPI · SQLAlchemy · numpy/scipy · Anthropic SDK
 └── frontend/         Next.js 15 · TypeScript · Tailwind CSS · Recharts
 ```
 
 ```
-                    ┌──────────────────────────────────────┐
-                    │           Next.js Frontend            │
-                    │  Dashboard · Scenarios · Compare      │
-                    │  Optimizer · Profile                  │
-                    └────────────┬─────────────────────────┘
+                    ┌──────────────────────────────────────────┐
+                    │             Next.js Frontend              │
+                    │  Dashboard · Scenarios · Compare          │
+                    │  Optimizer · Advisor · Profile            │
+                    └────────────┬─────────────────────────────┘
                                  │  REST API
-                    ┌────────────▼─────────────────────────┐
-                    │         FastAPI Backend               │
-                    │   /api/v1/students                    │
-                    │   /api/v1/courses                     │
-                    │   /api/v1/simulations                 │
-                    │   /api/v1/scenarios/optimize          │
-                    │   /api/v1/canvas/preview              │
-                    └────────────┬─────────────────────────┘
+                    ┌────────────▼─────────────────────────────┐
+                    │           FastAPI Backend                 │
+                    │   /api/v1/students                        │
+                    │   /api/v1/courses                         │
+                    │   /api/v1/simulations                     │
+                    │   /api/v1/simulations/monte-carlo         │
+                    │   /api/v1/scenarios/optimize              │
+                    │   /api/v1/advisor/chat                    │
+                    │   /api/v1/advisor/goal-target             │
+                    │   /api/v1/canvas/preview                  │
+                    └────────────┬─────────────────────────────┘
                                  │
-                    ┌────────────▼─────────────────────────┐
-                    │       Simulation Engine               │
-                    │  ┌──────────┐  ┌──────────────────┐  │
-                    │  │TimeSystem│  │ CognitiveLoad     │  │
-                    │  └──────────┘  └──────────────────┘  │
-                    │  ┌──────────┐  ┌──────────────────┐  │
-                    │  │Retention │  │ Performance       │  │
-                    │  └──────────┘  └──────────────────┘  │
-                    │  ┌──────────┐  ┌──────────────────┐  │
-                    │  │Recovery  │  │ Optimizer         │  │
-                    │  └──────────┘  └──────────────────┘  │
-                    └────────────┬─────────────────────────┘
+                    ┌────────────▼─────────────────────────────┐
+                    │         Simulation Engine                 │
+                    │  TimeSystem · CognitiveLoad · Retention   │
+                    │  Performance · Recovery · Optimizer       │
+                    └────────────┬─────────────────────────────┘
                                  │
-                    ┌────────────▼─────────────────────────┐
-                    │          SQLite Database              │
-                    │   students · courses · runs           │
-                    └──────────────────────────────────────┘
+                    ┌────────────▼─────────────────────────────┐
+                    │           SQLite Database                 │
+                    │  students · courses · simulation_runs     │
+                    │  actual_grades                            │
+                    └──────────────────────────────────────────┘
 ```
+
+---
 
 ## Quick Start
 
@@ -66,6 +65,9 @@ pip install -r requirements.txt
 # Copy environment config
 cp .env.example .env
 
+# (Optional) Add your Anthropic API key for the AI Advisor
+# Edit .env and set: ANTHROPIC_API_KEY=sk-ant-...
+
 # Start the API server
 uvicorn app.main:app --reload --port 8000
 ```
@@ -80,9 +82,6 @@ cd frontend
 # Install dependencies
 npm install
 
-# Copy environment config
-cp .env.local.example .env.local
-
 # Start the dev server
 npm run dev
 ```
@@ -96,7 +95,6 @@ Open: `http://localhost:3000`
 ```bash
 cd backend
 python -m pytest tests/ -v
-# 72 tests across 7 suites: API, engine, cognitive load, performance, recovery, retention, time system
 ```
 
 ---
@@ -108,33 +106,64 @@ python -m pytest tests/ -v
 | **Dashboard** | `/dashboard` | Latest simulation with trend indicators vs previous run |
 | **Profile** | `/profile` | Student profile, course enrollment, and Canvas LMS import |
 | **Scenarios** | `/scenarios` | Run simulations, view history, manage results |
-| **Scenario Detail** | `/scenarios/:id` | Full report with charts, weekly table, and CSV export |
+| **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo bands, actual grade tracker, PDF export |
 | **Compare** | `/compare` | Side-by-side overlay of two scenarios |
 | **Optimizer** | `/optimizer` | Differential evolution schedule optimizer |
+| **AI Chat** | `/advisor` | Claude-powered academic advisor with simulation context |
+| **Goal Targeting** | `/advisor/goal` | Find the schedule needed to hit a target GPA |
+| **All Students** | `/advisor/multi` | Multi-student burnout risk and GPA overview (advisor view) |
 
 ---
 
-## Canvas LMS Integration
+## Features
 
-Import your real enrolled courses directly from your institution's Canvas instance — no manual entry needed.
+### Simulation Engine
+- **5-subsystem tick loop** run once per simulated week: Time System → Cognitive Load → Retention → Performance → Recovery
+- **Variable sleep schedule** — weekday 6.5h / weekend 9h average (50.5h/week) as an alternative to a fixed nightly target
+- **Exam week modifiers** — cognitive load ×1.3, grade +5 if retention > 70%, grade −10 if burnout > 60%
+- **Extracurricular hours** — deducted from the weekly 168h budget before study time is allocated
+- **Mid-semester course drop** — freeze a course grade at a chosen week and remove it from ongoing load
 
-**How it works:**
+### Monte Carlo Analysis
+Run 200 randomized simulations with sleep jitter as the variance proxy. Produces **p10 / p50 / p90 GPA confidence bands** displayed as a shaded area on the GPA trajectory chart.
+
+### AI Advisor (Claude)
+Natural-language chat powered by `claude-haiku-4-5-20251001`. The advisor receives the student's profile, enrolled courses, and selected simulation results as context, then answers questions about burnout risk, study strategy, and schedule optimization.
+
+Requires an Anthropic API key — see [AI Advisor Setup](#ai-advisor-setup).
+
+### Goal Targeting
+Grid search over study strategy × sleep hours × work hours to find the minimum schedule adjustments needed to achieve a target GPA. Returns recommended work hours, sleep, and strategy along with actionable tips.
+
+### Actual vs Predicted Tracking
+Log real weekly grades per course during the semester. The scenario detail page overlays actual grades (red dashed line) on the predicted trajectory and shows a comparison table with Δ deviation.
+
+### Intervention Timeline
+The weekly snapshot table flags high-risk weeks automatically:
+- `⚠ Reduce load` — cognitive load exceeded threshold
+- `🔴 High burnout risk` — burnout probability > 60%
+
+### PDF Export
+One-click `window.print()` export of the full scenario detail report.
+
+### Multi-Student View
+Advisors can monitor all student profiles sorted by burnout risk then GPA gap. Summary banner shows how many students are at HIGH risk and how many are on track for their target GPA.
+
+### Canvas LMS Integration
+Import enrolled courses directly from your institution's Canvas instance.
 
 1. On the **Profile** page, click **Import from Canvas**
-2. Enter your institution's Canvas base URL (e.g. `https://yourschool.instructure.com`)
+2. Enter your Canvas base URL (e.g. `https://yourschool.instructure.com`)
 3. Paste a Canvas personal access token
-4. Review the fetched courses — credits, difficulty, and workload are pre-estimated and fully editable
-5. Select courses to import and confirm
+4. Review, edit, and import courses
 
-**Getting a Canvas access token:**
+**Getting a Canvas token:** Canvas → Account → Settings → Approved Integrations → New Access Token
 
-Canvas → **Account** → **Settings** → scroll to **Approved Integrations** → **New Access Token**
+> Your token is used only for the single fetch request and is **never stored**.
 
-> Your token is used only for the single fetch request and is **never stored** by the application.
+**Difficulty estimation by course level:**
 
-**Difficulty estimation from course code:**
-
-| Course level | Estimated difficulty |
+| Level | Estimated difficulty |
 |---|---|
 | 100-level | 4.0 |
 | 200-level | 5.0 |
@@ -146,16 +175,34 @@ Weekly workload defaults to **2 × credit hours** (Carnegie Unit standard). All 
 
 ---
 
+## AI Advisor Setup
+
+1. Create an account at [console.anthropic.com](https://console.anthropic.com)
+2. Add a payment method and purchase credits (minimum $5)
+3. Go to **Settings → API Keys → Create Key** and copy the key
+4. Add it to `backend/.env`:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-api03-your-key-here
+```
+
+5. Restart the backend server
+
+If the key is missing or invalid, the advisor page shows a clear error banner — all other features continue to work normally.
+
+---
+
 ## Simulation Models
 
 | Model | Description |
 |-------|-------------|
-| **Time System** | Distributes the 168-hour weekly budget across classes, work, sleep, study, recovery, and social time. During exam weeks, soft reserves (recovery/social) are squeezed to fund extra study. |
-| **Cognitive Load** | Computes mental effort from difficulty, study hours, prior fatigue, and sleep deficit. Applies a 1.3× multiplier on designated exam weeks. |
+| **Time System** | Distributes the 168h weekly budget across classes, work, sleep, study, recovery, and extracurriculars. During exam weeks, soft reserves are squeezed to fund extra study. Study is capped at 2× workload demand to allow A-range grades. |
+| **Cognitive Load** | Computes mental effort from difficulty, study hours, prior fatigue, and sleep deficit. Applies a 1.3× multiplier on exam weeks. Normalizer scales with number of courses (n × 60). |
 | **Retention Model** | Ebbinghaus forgetting curve with spaced repetition bonus. Tracks retention per course. |
-| **Performance Model** | Sigmoid-based grade prediction (0–100%) from study time, cognitive load, and retention. |
-| **Recovery & Burnout** | Logistic burnout probability from sustained overload and sleep deprivation. |
-| **Optimizer** | scipy differential evolution over work hours, sleep, and study strategy (3 objectives). |
+| **Performance Model** | Sigmoid-based grade prediction (0–100%) from study ratio, cognitive load, retention, and exam week modifier. Study ratio of 2.0 → ~91% base score. |
+| **Recovery & Burnout** | Logistic burnout probability from sustained overload and sleep deprivation. Burnout computed before grade prediction so exam modifiers are accurate. |
+| **Optimizer** | `scipy.optimize.differential_evolution` over work hours, sleep, and study strategy. |
+| **Monte Carlo** | 200 runs with ±0.15σ sleep jitter as variance proxy → p10/p50/p90 GPA bands. |
 
 ---
 
@@ -165,9 +212,13 @@ Weekly workload defaults to **2 × credit hours** (Carnegie Unit standard). All 
 |-------|---------|-------------|
 | `num_weeks` | 16 | Semester length (4–20 weeks) |
 | `work_hours_per_week` | 0 | Weekly employment hours |
-| `sleep_target_hours` | 7.0 | Nightly sleep target |
+| `sleep_target_hours` | 7.0 | Nightly sleep target (used when `sleep_schedule = fixed`) |
+| `sleep_schedule` | `fixed` | `fixed` (nightly target) or `variable` (6.5h weekday / 9h weekend) |
 | `study_strategy` | `spaced` | `spaced` / `mixed` / `cramming` |
 | `exam_weeks` | `[8, 16]` | Weeks with elevated load (midterms, finals) |
+| `extracurricular_hours` | 0 | Weekly extracurricular commitment (0–20h) |
+| `drop_course_id` | — | Course ID to drop mid-semester |
+| `drop_at_week` | — | Week at which the course is dropped |
 | `include_course_ids` | all | Subset of courses to include |
 | `scenario_name` | — | Optional label for the simulation |
 
@@ -177,34 +228,16 @@ Weekly workload defaults to **2 × credit hours** (Carnegie Unit standard). All 
 
 | Chart | Used On |
 |-------|---------|
-| GPA Trajectory (area + confidence band, exam week markers) | Dashboard, Scenario Detail, Optimizer |
+| GPA Trajectory — predicted line + Monte Carlo p10/p90 band + actual grades overlay | Dashboard, Scenario Detail, Optimizer |
 | Cognitive Load (line + fatigue overlay, exam week markers) | Dashboard, Scenario Detail |
 | Burnout Risk Gauge (radial) | Dashboard, Scenario Detail |
 | Time Allocation (pie) | Dashboard, Scenario Detail |
 | Per-Course Grade Trajectories | Dashboard, Scenario Detail, Optimizer |
 | Per-Course Knowledge Retention (area) | Scenario Detail |
-| Knowledge Retention Heatmap (per-course × per-week color grid) | Scenario Detail |
+| Knowledge Retention Heatmap (per-course × per-week) | Scenario Detail |
 | GPA Across Scenarios (cross-run sparkline) | Dashboard (2+ runs) |
 | GPA / Load / Burnout Comparison (overlaid lines) | Compare |
 | Per-Course Grade Comparison (table) | Compare |
-
----
-
-## Example Scenario Output
-
-```
-Simulation Result (16 weeks, 10h/week work, spaced study, exam weeks 8 & 16)
-
-Predicted GPA:    3.72 – 3.89
-Burnout Risk:     MEDIUM
-Peak Load Weeks:  6, 7, 8, 16
-Required Study:   23.5 h/week
-Sleep Deficit:    2.1 h/week
-
-Recommendation:
-  Moderate burnout risk detected — watch weeks 6, 7, 8.
-  Consider increasing recovery time during midterms.
-```
 
 ---
 
@@ -212,6 +245,7 @@ Recommendation:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | `/api/v1/students/` | List all students |
 | POST | `/api/v1/students/` | Create student profile |
 | GET | `/api/v1/students/{id}` | Get student profile |
 | PUT | `/api/v1/students/{id}` | Update profile |
@@ -222,14 +256,19 @@ Recommendation:
 | GET | `/api/v1/simulations/{id}` | Get result |
 | GET | `/api/v1/simulations/student/{id}` | Simulation history |
 | DELETE | `/api/v1/simulations/{id}` | Delete simulation |
-| POST | `/api/v1/scenarios/optimize` | Run optimizer |
+| POST | `/api/v1/simulations/monte-carlo` | Run Monte Carlo (200 iterations) |
+| POST | `/api/v1/simulations/{id}/actual-grades` | Save actual weekly grades |
+| GET | `/api/v1/simulations/{id}/actual-grades` | Get actual grades |
+| POST | `/api/v1/scenarios/optimize` | Run schedule optimizer |
+| POST | `/api/v1/advisor/chat` | AI advisor chat (requires API key) |
+| POST | `/api/v1/advisor/goal-target` | Goal targeting grid search |
 | POST | `/api/v1/canvas/preview` | Fetch courses from Canvas LMS |
 
 ---
 
 ## Tech Stack
 
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, pytest
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, pytest
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts, Axios
 
 ---
@@ -250,25 +289,41 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 **"WinError 10013 — access permissions" on port 8000**
-Another process is already listening on port 8000. Find and kill it:
 
 ```powershell
 netstat -ano | findstr :8000
 taskkill /F /PID <pid>
 ```
 
+**Frontend shows stale or blank pages (OneDrive + Next.js conflict)**
+OneDrive can corrupt `.next` symlinks. Fix:
+
+```powershell
+cd frontend
+Remove-Item -Recurse -Force .next
+npm run dev
+# After first build, pin the folder to prevent future corruption:
+attrib +P .next /S /D
+```
+
 **Backend starts but frontend shows no data**
-Make sure `frontend/.env.local` exists and contains:
+Make sure `NEXT_PUBLIC_API_URL` is set. Create `frontend/.env.local` if it doesn't exist:
+
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
+**AI advisor returns "Invalid API key"**
+Re-copy your key from console.anthropic.com → Settings → API Keys. Make sure there are no spaces or line breaks in `backend/.env`.
+
+**AI advisor returns "credit balance too low"**
+Add credits at console.anthropic.com → Settings → Plans & Billing.
+
 **Canvas import returns "Invalid Canvas token"**
-Generate a new token at: Canvas → Account → Settings → New Access Token.
-Make sure you copy the full token string with no trailing spaces.
+Generate a new token: Canvas → Account → Settings → New Access Token. Copy the full token with no trailing spaces.
 
 **Canvas import returns "No active courses found"**
-Canvas only returns courses with `workflow_state = available`. Concluded or unpublished courses are excluded. Check that your current semester courses are published by your instructor.
+Canvas only returns courses with `workflow_state = available`. Check that your current semester courses are published.
 
 ---
 
