@@ -4,6 +4,15 @@ Time System — Weekly Time Budget Allocator.
 Models the fundamental constraint of a student's week: 168 hours,
 distributed across competing demands. This is the first subsystem called
 each simulation tick, and its output constrains every downstream model.
+
+References:
+  - Carnegie Unit standard: 1 credit hour ≈ 2h out-of-class work per week
+    (Carnegie Foundation for the Advancement of Teaching, 1906/2011)
+  - Hirsch & Keniston (2003): Predicting Academic Success from Time Allocation
+  - Hirshkowitz et al. (2015): National Sleep Foundation sleep time duration
+    recommendations (adult 7–9h, teen 8–10h) — basis for sleep_target_hours range
+  - Monks et al. (2006): Variable sleep patterns: weekday vs. weekend sleep debt
+    — basis for the variable sleep schedule (6.5h weekday / 9h weekend)
 """
 
 from dataclasses import dataclass
