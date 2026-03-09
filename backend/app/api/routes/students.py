@@ -8,6 +8,12 @@ from app.schemas.student import StudentCreate, StudentOut, StudentUpdate
 router = APIRouter(prefix="/students", tags=["students"])
 
 
+@router.get("/", response_model=list[StudentOut])
+def list_students(db: Session = Depends(get_db)):
+    """List all student profiles (used by multi-student advisor view)."""
+    return crud.get_all_students(db)
+
+
 @router.post("/", response_model=StudentOut, status_code=status.HTTP_201_CREATED)
 def create_student(payload: StudentCreate, db: Session = Depends(get_db)):
     """Create a new student profile."""
