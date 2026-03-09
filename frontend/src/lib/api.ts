@@ -1,9 +1,17 @@
 import axios from "axios";
 import type {
+  ActualGradeEntry,
+  ActualGradesResponse,
+  AdvisorRequest,
+  AdvisorResponse,
   CanvasImportPreview,
   CanvasPreviewRequest,
   Course,
   CourseCreate,
+  GoalTargetRequest,
+  GoalTargetResult,
+  MonteCarloRequest,
+  MonteCarloResult,
   OptimizationRequest,
   OptimizationResult,
   ScenarioConfig,
@@ -16,7 +24,6 @@ import type {
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000",
   headers: { "Content-Type": "application/json" },
-  // Fail fast: 10 s for normal requests, 60 s for long-running optimizer
   timeout: 10_000,
 });
 
@@ -40,6 +47,9 @@ api.interceptors.response.use(
 // ── Students ──────────────────────────────────────────────────────────────────
 
 export const studentsApi = {
+  list: () =>
+    api.get<Student[]>("/api/v1/students/").then((r) => r.data),
+
   create: (data: StudentCreate) =>
     api.post<Student>("/api/v1/students/", data).then((r) => r.data),
 
@@ -89,6 +99,29 @@ export const simulationsApi = {
     api.delete(`/api/v1/simulations/${simId}`).then((r) => r.data),
 };
 
+// ── Monte Carlo ───────────────────────────────────────────────────────────────
+
+export const monteCarloApi = {
+  run: (request: MonteCarloRequest) =>
+    api
+      .post<MonteCarloResult>("/api/v1/simulations/monte-carlo", request, { timeout: 120_000 })
+      .then((r) => r.data),
+};
+
+// ── Actual Grades ─────────────────────────────────────────────────────────────
+
+export const actualGradesApi = {
+  save: (simId: number, grades: ActualGradeEntry[]) =>
+    api
+      .post<ActualGradesResponse>(`/api/v1/simulations/${simId}/actual-grades`, { grades })
+      .then((r) => r.data),
+
+  get: (simId: number) =>
+    api
+      .get<ActualGradesResponse>(`/api/v1/simulations/${simId}/actual-grades`)
+      .then((r) => r.data),
+};
+
 // ── Canvas LMS ────────────────────────────────────────────────────────────────
 
 export const canvasApi = {
@@ -104,5 +137,19 @@ export const optimizationApi = {
   optimize: (request: OptimizationRequest) =>
     api
       .post<OptimizationResult>("/api/v1/scenarios/optimize", request, { timeout: 60_000 })
+      .then((r) => r.data),
+};
+
+// ── Advisor ───────────────────────────────────────────────────────────────────
+
+export const advisorApi = {
+  chat: (request: AdvisorRequest) =>
+    api
+      .post<AdvisorResponse>("/api/v1/advisor/chat", request, { timeout: 30_000 })
+      .then((r) => r.data),
+
+  goalTarget: (request: GoalTargetRequest) =>
+    api
+      .post<GoalTargetResult>("/api/v1/advisor/goal-target", request, { timeout: 90_000 })
       .then((r) => r.data),
 };
