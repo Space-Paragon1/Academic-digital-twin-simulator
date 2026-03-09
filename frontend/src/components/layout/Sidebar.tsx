@@ -9,15 +9,17 @@ import {
   FlaskConical,
   GitCompare,
   Sparkles,
+  BrainCircuit,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const navItems: { href: string; label: string; Icon: LucideIcon; description: string }[] = [
-  { href: "/dashboard", label: "Dashboard",  Icon: LayoutDashboard, description: "Latest results"  },
-  { href: "/profile",   label: "My Profile", Icon: UserCircle,      description: "Courses & setup"  },
-  { href: "/scenarios", label: "Scenarios",  Icon: FlaskConical,    description: "Run simulations"  },
-  { href: "/compare",   label: "Compare",    Icon: GitCompare,      description: "Side-by-side"     },
-  { href: "/optimizer", label: "Optimizer",  Icon: Sparkles,        description: "Best schedule"    },
+  { href: "/dashboard", label: "Dashboard",  Icon: LayoutDashboard, description: "Latest results"    },
+  { href: "/profile",   label: "My Profile", Icon: UserCircle,      description: "Courses & setup"   },
+  { href: "/scenarios", label: "Scenarios",  Icon: FlaskConical,    description: "Run simulations"   },
+  { href: "/compare",   label: "Compare",    Icon: GitCompare,      description: "Side-by-side"      },
+  { href: "/optimizer", label: "Optimizer",  Icon: Sparkles,        description: "Best schedule"     },
+  { href: "/advisor",   label: "Advisor",    Icon: BrainCircuit,    description: "AI + Goal targeting"},
 ];
 
 export function Sidebar() {
