@@ -18,6 +18,13 @@ Grade scale:
   C+: 77–79  → 2.3
   C:  73–76  → 2.0
   ...
+
+References:
+  - Pascarella & Terenzini (2005): How College Affects Students (study time → GPA relationship)
+  - Kuh et al. (2008): Unmasking the Effects of Student Engagement on First-Year College Grades
+    (diminishing returns on study time modeled via sigmoid)
+  - Roediger & Karpicke (2006): Test-Enhanced Learning (retrieval practice and exam performance)
+  - Walker (2017): Why We Sleep — cognitive performance degradation from sleep loss
 """
 
 import math
