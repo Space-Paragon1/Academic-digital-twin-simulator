@@ -3,8 +3,17 @@ from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db import crud
-from app.schemas.simulation import ScenarioConfig, SimulationResult
+from app.schemas.simulation import (
+    ActualGradeEntry,
+    ActualGradesResponse,
+    ActualGradesUpdate,
+    MonteCarloRequest,
+    MonteCarloResult,
+    ScenarioConfig,
+    SimulationResult,
+)
 from app.simulation.engine import SimulationEngine
+from app.simulation.monte_carlo import run_monte_carlo
 
 router = APIRouter(prefix="/simulations", tags=["simulations"])
 engine = SimulationEngine()
@@ -36,6 +45,32 @@ def run_simulation(config: ScenarioConfig, db: Session = Depends(get_db)):
     result.id = run.id
     result.created_at = run.created_at
     return result
+
+
+@router.post("/monte-carlo", response_model=MonteCarloResult)
+def run_monte_carlo_endpoint(request: MonteCarloRequest, db: Session = Depends(get_db)):
+    """
+    Run a Monte Carlo simulation to produce GPA confidence bands (p10/p50/p90).
+    Results are NOT persisted — call /run first to save the base scenario.
+    """
+    student = crud.get_student(db, request.scenario_config.student_id)
+    if not student:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
+
+    courses = crud.get_courses_for_student(db, request.scenario_config.student_id)
+    if not courses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Student has no courses enrolled.",
+        )
+
+    if request.scenario_config.include_course_ids:
+        courses = [c for c in courses if c.id in request.scenario_config.include_course_ids]
+
+    try:
+        return run_monte_carlo(request=request, courses=courses, student=student)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get("/{sim_id}", response_model=SimulationResult)
@@ -77,3 +112,35 @@ def delete_simulation(sim_id: int, db: Session = Depends(get_db)):
     deleted = crud.delete_simulation_run(db, sim_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+
+
+@router.post("/{sim_id}/actual-grades", response_model=ActualGradesResponse)
+def save_actual_grades(
+    sim_id: int,
+    body: ActualGradesUpdate,
+    db: Session = Depends(get_db),
+):
+    """Save (replace) actual weekly grades for a simulation run."""
+    run = crud.get_simulation_run(db, sim_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+    saved = crud.save_actual_grades(db, sim_id, body.grades)
+    return ActualGradesResponse(saved=saved, grades=body.grades)
+
+
+@router.get("/{sim_id}/actual-grades", response_model=ActualGradesResponse)
+def get_actual_grades(sim_id: int, db: Session = Depends(get_db)):
+    """Retrieve all stored actual grades for a simulation run."""
+    run = crud.get_simulation_run(db, sim_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+    grades = crud.get_actual_grades(db, sim_id)
+    entries = [
+        ActualGradeEntry(
+            course_name=g.course_name,
+            week=g.week,
+            actual_grade=g.actual_grade,
+        )
+        for g in grades
+    ]
+    return ActualGradesResponse(saved=len(entries), grades=entries)
