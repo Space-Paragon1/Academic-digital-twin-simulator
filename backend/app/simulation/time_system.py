@@ -62,6 +62,7 @@ def allocate_time(
     study_strategy: str = "spaced",
     recovery_hours: float = 4.0,
     social_hours: float = 5.0,
+    extracurricular_hours: float = 0.0,
 ) -> TimeAllocation:
     """
     Distribute the 168-hour weekly budget across all student activities.
@@ -70,9 +71,10 @@ def allocate_time(
       1. Sleep (non-negotiable minimum)
       2. Classes (fixed by enrollment)
       3. Work (contracted)
-      4. Personal/commute buffer
-      5. Recovery and social (soft minimums)
-      6. Remainder → study time (split deep/shallow by strategy)
+      4. Extracurricular activities (clubs, sports)
+      5. Personal/commute buffer
+      6. Recovery and social (soft minimums)
+      7. Remainder → study time (split deep/shallow by strategy)
 
     Args:
         courses: List of Course ORM objects currently enrolled.
@@ -82,6 +84,7 @@ def allocate_time(
             the deep-to-shallow study ratio.
         recovery_hours: Hours reserved for rest beyond sleep.
         social_hours: Hours reserved for social and leisure activities.
+        extracurricular_hours: Hours per week for clubs, sports, etc.
 
     Returns:
         TimeAllocation dataclass with all hour buckets populated.
@@ -94,6 +97,7 @@ def allocate_time(
         sleep_hours
         + class_hours
         + work_hours
+        + extracurricular_hours
         + MIN_COMMUTE_AND_PERSONAL_HOURS
     )
 
