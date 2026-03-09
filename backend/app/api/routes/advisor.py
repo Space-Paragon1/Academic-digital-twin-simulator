@@ -62,27 +62,70 @@ def advisor_chat(request: AdvisorRequest, db: Session = Depends(get_db)):
         for c in courses
     ) or "  (no courses enrolled)"
 
-    # Optionally enrich with simulation context
+    # Enrich with simulation context — auto-use latest if no specific ID given
     sim_context = ""
     context_used = False
-    if request.simulation_id:
-        sim_run = crud.get_simulation_run(db, request.simulation_id)
+    sim_id = request.simulation_id
+    if not sim_id:
+        all_runs = crud.get_simulation_runs_for_student(db, request.student_id)
+        if all_runs:
+            sim_id = all_runs[-1].id
+
+    if sim_id:
+        sim_run = crud.get_simulation_run(db, sim_id)
         if sim_run and sim_run.results:
             r = sim_run.results
             summary = r.get("summary", {})
             cfg = r.get("scenario_config", {})
-            sim_context = f"""
-Latest simulation (ID {sim_run.id}):
-  - Predicted GPA: {summary.get('predicted_gpa_mean', 'N/A')} \
-(range {summary.get('predicted_gpa_min', 'N/A')}–{summary.get('predicted_gpa_max', 'N/A')})
-  - Burnout risk: {summary.get('burnout_risk', 'N/A')} \
-({summary.get('burnout_probability', 0) * 100:.0f}% probability)
-  - Study strategy: {cfg.get('study_strategy', 'N/A')}
-  - Work hours: {cfg.get('work_hours_per_week', 'N/A')}h/week
-  - Sleep: {cfg.get('sleep_target_hours', 'N/A')}h/night
-  - Peak overload weeks: {summary.get('peak_overload_weeks', [])}
-  - Sleep deficit: {summary.get('sleep_deficit_hours', 'N/A')}h/week
-  - Recommendation: {summary.get('recommendation', 'N/A')}"""
+            snapshots = r.get("weekly_snapshots", [])
+
+            # Compute early-vs-late trends from weekly snapshots
+            trend_text = ""
+            if len(snapshots) >= 6:
+                early = snapshots[:3]
+                late  = snapshots[-3:]
+                avg_load_early = sum(s.get("cognitive_load", 0) for s in early) / 3
+                avg_load_late  = sum(s.get("cognitive_load", 0) for s in late)  / 3
+                avg_gpa_early  = sum(s.get("predicted_gpa", 0) for s in early) / 3
+                avg_gpa_late   = sum(s.get("predicted_gpa", 0) for s in late)  / 3
+                gpa_dir  = ("improving" if avg_gpa_late  > avg_gpa_early  + 0.05 else
+                            "declining" if avg_gpa_late  < avg_gpa_early  - 0.05 else "stable")
+                load_dir = ("rising"   if avg_load_late > avg_load_early + 5   else
+                            "dropping" if avg_load_late < avg_load_early - 5   else "stable")
+                trend_text = (
+                    f"\n  - GPA trend: {gpa_dir} "
+                    f"(early avg {avg_gpa_early:.2f} -> late avg {avg_gpa_late:.2f})"
+                    f"\n  - Cognitive load trend: {load_dir} "
+                    f"(early avg {avg_load_early:.0f} -> late avg {avg_load_late:.0f}/100)"
+                )
+
+            # Highest burnout week
+            worst_week_text = ""
+            if snapshots:
+                worst = max(snapshots, key=lambda s: s.get("burnout_probability", 0))
+                worst_week_text = (
+                    f"\n  - Worst burnout week: week {worst.get('week')} "
+                    f"({worst.get('burnout_probability', 0) * 100:.0f}% probability, "
+                    f"load {worst.get('cognitive_load', 0):.0f}/100)"
+                )
+
+            gpa_mean = summary.get("predicted_gpa_mean", 0)
+            gpa_min  = summary.get("predicted_gpa_min", 0)
+            gpa_max  = summary.get("predicted_gpa_max", 0)
+            sim_context = (
+                f"\nSimulation context (ID {sim_run.id}, "
+                f"scenario: {cfg.get('scenario_name', 'unnamed')}):"
+                f"\n  - Predicted GPA: {gpa_mean:.2f} (range {gpa_min:.2f}-{gpa_max:.2f})"
+                f"\n  - Burnout risk: {summary.get('burnout_risk', 'N/A')} "
+                f"({summary.get('burnout_probability', 0) * 100:.0f}% probability)"
+                f"\n  - Study strategy: {cfg.get('study_strategy', 'N/A')}"
+                f"\n  - Work hours: {cfg.get('work_hours_per_week', 'N/A')}h/week"
+                f"\n  - Sleep: {cfg.get('sleep_target_hours', 'N/A')}h/night"
+                f"\n  - Peak overload weeks: {summary.get('peak_overload_weeks', [])}"
+                f"\n  - Sleep deficit: {summary.get('sleep_deficit_hours', 'N/A')}h/week"
+                f"{trend_text}{worst_week_text}"
+                f"\n  - Recommendation: {summary.get('recommendation', 'N/A')}"
+            )
             context_used = True
 
     system_prompt = f"""You are an academic advisor AI for a digital twin simulator. \
