@@ -47,6 +47,8 @@ def predict_grade(
     weekly_study_hours: float,
     avg_cognitive_load: float,
     cumulative_retention: float,
+    is_exam_week: bool = False,
+    burnout_probability: float = 0.0,
 ) -> float:
     """
     Predict a student's percentage grade in a course for a given week's state.
@@ -55,13 +57,16 @@ def predict_grade(
         base_score = sigmoid(study_ratio) scaled to 40–95 range
         load_penalty = 0 if load <= 70, else (load - 70) * 0.5
         retention_bonus = cumulative_retention * 10 (max +10 points)
-        grade = clamp(base_score - load_penalty + retention_bonus, 0, 100)
+        exam_modifier = +5 if retention > 0.7 (prepared), -10 if burnout > 0.6
+        grade = clamp(base_score - load_penalty + retention_bonus + exam_modifier, 0, 100)
 
     Args:
         course: Course ORM object (needs difficulty_score, weekly_workload_hours).
         weekly_study_hours: Hours studied for this course this week.
         avg_cognitive_load: Rolling average cognitive load this week (0–100).
         cumulative_retention: Knowledge retention score for this course (0–1).
+        is_exam_week: Whether this is an exam week.
+        burnout_probability: Current burnout probability (0–1).
 
     Returns:
         Predicted grade as a percentage [0, 100].
@@ -85,7 +90,15 @@ def predict_grade(
     # Retention bonus (prior knowledge lifts performance)
     retention_bonus = cumulative_retention * 10.0
 
-    grade = base_score - load_penalty + retention_bonus
+    # Exam week modifier: prepared students boost, burned-out students suffer
+    exam_modifier = 0.0
+    if is_exam_week:
+        if cumulative_retention > 0.7:
+            exam_modifier += 5.0   # Well-prepared: knowledge shows on exam
+        if burnout_probability > 0.6:
+            exam_modifier -= 10.0  # Burnout penalty
+
+    grade = base_score - load_penalty + retention_bonus + exam_modifier
     return float(min(max(grade, 0.0), 100.0))
 
 
