@@ -8,8 +8,9 @@ Simulation tick order (each week):
   1. TimeSystem    → allocate the 168-hour budget
   2. CognitiveLoad → compute load from study + fatigue + sleep
   3. RetentionModel → update knowledge retention per course
-  4. PerformanceModel → predict grades from state
-  5. RecoveryModel → update fatigue and accumulate burnout history
+  4. RecoveryModel → compute burnout probability (before grades)
+  5. PerformanceModel → predict grades from state (uses burnout for exam modifier)
+  6. RecoveryModel → update fatigue carry-over
 
 All subsystems are pure functions — the engine owns mutable state.
 """
@@ -35,6 +36,9 @@ from app.simulation import (
 
 # 7 hours/night × 7 nights = recommended weekly sleep hours
 _RECOMMENDED_WEEKLY_SLEEP_HOURS: float = 49.0
+
+# Variable sleep schedule: weekday 6.5h × 5 + weekend 9h × 2 = 50.5h/week
+_VARIABLE_SLEEP_WEEKLY: float = 6.5 * 5 + 9.0 * 2  # 50.5h
 
 
 class SimulationEngine:
@@ -72,6 +76,13 @@ class SimulationEngine:
 
         course_credits = {c.name: c.credits for c in courses}
 
+        # Effective weekly sleep (variable schedule: more sleep on weekends)
+        effective_sleep_target = (
+            _VARIABLE_SLEEP_WEEKLY / 7.0
+            if config.sleep_schedule == "variable"
+            else config.sleep_target_hours
+        )
+
         # ── Mutable state ──────────────────────────────────────────────────
         fatigue: float = 0.0
         retention_per_course: dict[int, float] = {c.id: 0.0 for c in courses}
@@ -88,26 +99,40 @@ class SimulationEngine:
         for week in range(1, config.num_weeks + 1):
             is_exam_week = week in (config.exam_weeks or [])
 
+            # Handle mid-semester course drop
+            if (
+                config.drop_course_id is not None
+                and config.drop_at_week is not None
+                and week > config.drop_at_week
+            ):
+                active_courses = [c for c in courses if c.id != config.drop_course_id]
+            else:
+                active_courses = courses
+
+            if not active_courses:
+                active_courses = courses  # safety: never drop all courses
+
             # 1. Time system — during exam weeks squeeze soft reserves for more study
             alloc: ts.TimeAllocation = ts.allocate_time(
-                courses=courses,
+                courses=active_courses,
                 work_hours=config.work_hours_per_week,
-                sleep_target_hours=config.sleep_target_hours,
+                sleep_target_hours=effective_sleep_target,
                 study_strategy=config.study_strategy,
                 recovery_hours=2.0 if is_exam_week else 4.0,
                 social_hours=2.0 if is_exam_week else 5.0,
+                extracurricular_hours=config.extracurricular_hours,
             )
 
-            # 2. Distribute study hours across courses
+            # 2. Distribute study hours across active courses
             total_study = alloc.deep_study_hours + alloc.shallow_study_hours
             study_per_course = cl.distribute_study_hours(
-                courses=courses,
+                courses=active_courses,
                 total_study_hours=total_study,
             )
 
             # 3. Cognitive load — apply 1.3× exam pressure multiplier
             weekly_load = cl.compute_weekly_load(
-                courses=courses,
+                courses=active_courses,
                 study_hours_per_course=study_per_course,
                 prior_fatigue=fatigue,
                 sleep_hours=alloc.sleep_hours,
@@ -115,33 +140,43 @@ class SimulationEngine:
             if is_exam_week:
                 weekly_load = min(100.0, weekly_load * 1.3)
 
-            # 4. Retention update per course
-            for course in courses:
+            # 4. Retention update per active course
+            for course in active_courses:
                 retention_per_course[course.id] = ret.update_retention(
                     prior_retention=retention_per_course[course.id],
                     study_hours=study_per_course.get(course.id, 0.0),
                     study_strategy=config.study_strategy,
                 )
 
-            # 5. Performance prediction per course
-            course_grades: dict[str, float] = {}
-            for course in courses:
-                grade = pm.predict_grade(
-                    course=course,
-                    weekly_study_hours=study_per_course.get(course.id, 0.0),
-                    avg_cognitive_load=weekly_load,
-                    cumulative_retention=retention_per_course[course.id],
-                )
-                course_grades[course.name] = grade
-
-            weekly_gpa = pm.compute_gpa(course_grades, course_credits)
-
-            # 6. Burnout probability (uses history up to this week)
+            # 5. Burnout probability — computed BEFORE grades (exam modifier needs it)
             burnout_prob = rm.compute_burnout_probability(
                 load_history=load_history + [weekly_load],
                 sleep_history=sleep_history + [alloc.sleep_hours],
                 recovery_history=recovery_hours_history + [alloc.recovery_hours],
             )
+
+            # 6. Performance prediction per active course
+            course_grades: dict[str, float] = {}
+            for course in active_courses:
+                grade = pm.predict_grade(
+                    course=course,
+                    weekly_study_hours=study_per_course.get(course.id, 0.0),
+                    avg_cognitive_load=weekly_load,
+                    cumulative_retention=retention_per_course[course.id],
+                    is_exam_week=is_exam_week,
+                    burnout_probability=burnout_prob,
+                )
+                course_grades[course.name] = grade
+
+            # Dropped course keeps its last recorded grade (frozen after drop)
+            if config.drop_course_id is not None and config.drop_at_week is not None:
+                dropped = next((c for c in courses if c.id == config.drop_course_id), None)
+                if dropped and dropped.name not in course_grades and weekly_grades_history:
+                    course_grades[dropped.name] = weekly_grades_history[-1].get(
+                        dropped.name, 0.0
+                    )
+
+            weekly_gpa = pm.compute_gpa(course_grades, course_credits)
 
             # 7. Fatigue update
             fatigue = rm.compute_recovery(
