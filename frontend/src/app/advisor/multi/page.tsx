@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BurnoutBadge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
+import { PinGate } from "@/components/ui/PinGate";
 import { studentsApi, simulationsApi } from "@/lib/api";
 import type { SimulationResult, Student } from "@/lib/types";
 
@@ -15,7 +16,7 @@ interface StudentWithSim {
 
 const riskOrder = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 
-export default function MultiStudentPage() {
+function MultiStudentContent() {
   const [data,      setData]      = useState<StudentWithSim[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error,     setError]     = useState<string | null>(null);
@@ -180,5 +181,13 @@ export default function MultiStudentPage() {
         })}
       </div>
     </div>
+  );
+}
+
+export default function MultiStudentPage() {
+  return (
+    <PinGate>
+      <MultiStudentContent />
+    </PinGate>
   );
 }
