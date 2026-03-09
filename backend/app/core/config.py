@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     APP_NAME: str = "Academic Digital Twin"
@@ -14,6 +15,7 @@ class Settings(BaseSettings):
     # Stored as a comma-separated string so pydantic-settings never tries to
     # JSON-decode it. Parse into a list with the `cors_origins` property.
     CORS_ORIGINS: str = "http://localhost:3000"
+    ANTHROPIC_API_KEY: str | None = None
 
     @property
     def cors_origins(self) -> list[str]:
