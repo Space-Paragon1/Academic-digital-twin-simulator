@@ -3,9 +3,10 @@ from sqlalchemy.orm import Session
 from app.models.student import Student
 from app.models.course import Course
 from app.models.simulation import SimulationRun
+from app.models.actual_grade import ActualGrade
 from app.schemas.student import StudentCreate, StudentUpdate
 from app.schemas.course import CourseCreate
-from app.schemas.simulation import ScenarioConfig, SimulationResult
+from app.schemas.simulation import ScenarioConfig, SimulationResult, ActualGradeEntry
 
 
 # ── Student ──────────────────────────────────────────────────────────────────
@@ -108,3 +109,35 @@ def delete_simulation_run(db: Session, sim_id: int) -> bool:
     db.delete(run)
     db.commit()
     return True
+
+
+# ── All Students ───────────────────────────────────────────────────────────────
+
+def get_all_students(db: Session) -> list[Student]:
+    return db.query(Student).order_by(Student.id.asc()).all()
+
+
+# ── Actual Grades ──────────────────────────────────────────────────────────────
+
+def save_actual_grades(db: Session, sim_id: int, grades: list[ActualGradeEntry]) -> int:
+    """Replace all actual grades for a simulation run."""
+    db.query(ActualGrade).filter(ActualGrade.simulation_run_id == sim_id).delete()
+    for entry in grades:
+        ag = ActualGrade(
+            simulation_run_id=sim_id,
+            course_name=entry.course_name,
+            week=entry.week,
+            actual_grade=entry.actual_grade,
+        )
+        db.add(ag)
+    db.commit()
+    return len(grades)
+
+
+def get_actual_grades(db: Session, sim_id: int) -> list[ActualGrade]:
+    return (
+        db.query(ActualGrade)
+        .filter(ActualGrade.simulation_run_id == sim_id)
+        .order_by(ActualGrade.week.asc())
+        .all()
+    )
