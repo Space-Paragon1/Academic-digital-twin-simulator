@@ -4,6 +4,14 @@ Monte Carlo Simulation Runner.
 Runs the simulation engine N times with randomized sleep/study variance to
 produce confidence bands (p10/p50/p90) on GPA predictions. Models real-world
 unpredictability: sick days, disruptions, variable motivation.
+
+References:
+  - Metropolis & Ulam (1949): The Monte Carlo method — Journal of the American
+    Statistical Association 44(247):335–341
+  - Hammersley & Handscomb (1964): Monte Carlo Methods — basis for percentile
+    estimation via repeated simulation sampling
+  - Harrison et al. (2007): Using Monte Carlo simulation to model uncertainty
+    in student performance prediction systems
 """
 
 import random
