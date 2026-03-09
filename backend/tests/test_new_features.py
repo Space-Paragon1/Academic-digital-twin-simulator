@@ -236,8 +236,8 @@ def test_monte_carlo_returns_ordered_percentiles(courses, student):
         monte_carlo=MonteCarloConfig(n_runs=20, seed=42),
     )
     result = run_monte_carlo(request=request, courses=courses, student=student)
-    for week_band in result.weekly_bands:
-        assert week_band.p10 <= week_band.p50 <= week_band.p90
+    for p10, p50, p90 in zip(result.weekly_p10, result.weekly_p50, result.weekly_p90):
+        assert p10 <= p50 <= p90
 
 
 def test_monte_carlo_summary_gpa_in_valid_range(courses, student):
@@ -251,7 +251,7 @@ def test_monte_carlo_summary_gpa_in_valid_range(courses, student):
         monte_carlo=MonteCarloConfig(n_runs=20, seed=0),
     )
     result = run_monte_carlo(request=request, courses=courses, student=student)
-    assert 0.0 <= result.gpa_p10 <= result.gpa_p50 <= result.gpa_p90 <= 4.0
+    assert 0.0 <= result.p10_gpa <= result.p50_gpa <= result.p90_gpa <= 4.0
 
 
 def test_monte_carlo_weekly_bands_length_matches_num_weeks(courses, student):
@@ -265,4 +265,6 @@ def test_monte_carlo_weekly_bands_length_matches_num_weeks(courses, student):
         monte_carlo=MonteCarloConfig(n_runs=15, seed=7),
     )
     result = run_monte_carlo(request=request, courses=courses, student=student)
-    assert len(result.weekly_bands) == 10
+    assert len(result.weekly_p10) == 10
+    assert len(result.weekly_p50) == 10
+    assert len(result.weekly_p90) == 10
