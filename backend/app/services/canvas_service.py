@@ -90,61 +90,79 @@ def fetch_canvas_courses(canvas_url: str, token: str) -> list[CanvasCourse]:
         "per_page": 50,
     }
 
-    with httpx.Client(timeout=15.0) as client:
-        try:
-            response = client.get(
-                f"{canvas_url}/api/v1/courses",
-                headers=headers,
-                params=params,
-            )
-        except httpx.RequestError as exc:
-            raise httpx.RequestError(
-                f"Could not reach Canvas at {canvas_url}. "
-                "Check the URL and your network connection."
-            ) from exc
-
-    if response.status_code == 401:
-        raise ValueError(
-            "Invalid Canvas token. Generate a new one at: "
-            "Canvas → Account → Settings → New Access Token."
-        )
-    if response.status_code in (404, 422):
-        raise ValueError(
-            f"Canvas URL not found ({canvas_url}). "
-            "Verify your institution's Canvas base URL."
-        )
-
-    response.raise_for_status()
-
     courses: list[CanvasCourse] = []
-    for raw in response.json():
-        # Skip courses that aren't actively available
-        if raw.get("workflow_state") not in ("available",):
-            continue
+    url: str | None = f"{canvas_url}/api/v1/courses"
 
-        name = raw.get("name", "Unnamed Course")
-        code = raw.get("course_code", "")
+    with httpx.Client(timeout=15.0) as client:
+        while url:
+            try:
+                response = client.get(url, headers=headers, params=params)
+            except httpx.RequestError as exc:
+                raise httpx.RequestError(
+                    f"Could not reach Canvas at {canvas_url}. "
+                    "Check the URL and your network connection."
+                ) from exc
 
-        # Canvas sometimes surfaces credit info — use it when present
-        credits = raw.get("credits_by_completion") or raw.get("credit_hours") or 3
-        try:
-            credits = int(float(credits))
-        except (TypeError, ValueError):
-            credits = 3
-        credits = max(1, min(credits, 6))
+            if response.status_code == 401:
+                raise ValueError(
+                    "Invalid Canvas token. Generate a new one at: "
+                    "Canvas → Account → Settings → New Access Token."
+                )
+            if response.status_code in (404, 422):
+                raise ValueError(
+                    f"Canvas URL not found ({canvas_url}). "
+                    "Verify your institution's Canvas base URL."
+                )
+            response.raise_for_status()
 
-        difficulty = _estimate_difficulty(code)
-        workload = _estimate_workload(credits)
+            for raw in response.json():
+                # Skip courses that aren't actively available
+                if raw.get("workflow_state") not in ("available",):
+                    continue
 
-        courses.append(
-            CanvasCourse(
-                canvas_id=raw["id"],
-                name=name,
-                course_code=code,
-                credits=credits,
-                difficulty_score=difficulty,
-                weekly_workload_hours=workload,
-            )
-        )
+                name = raw.get("name", "Unnamed Course")
+                code = raw.get("course_code", "")
+
+                # Canvas sometimes surfaces credit info — use it when present
+                credits = raw.get("credits_by_completion") or raw.get("credit_hours") or 3
+                try:
+                    credits = int(float(credits))
+                except (TypeError, ValueError):
+                    credits = 3
+                credits = max(1, min(credits, 6))
+
+                difficulty = _estimate_difficulty(code)
+                workload = _estimate_workload(credits)
+
+                courses.append(
+                    CanvasCourse(
+                        canvas_id=raw["id"],
+                        name=name,
+                        course_code=code,
+                        credits=credits,
+                        difficulty_score=difficulty,
+                        weekly_workload_hours=workload,
+                    )
+                )
+
+            # Follow Canvas pagination via Link header (RFC 5988)
+            link_header = response.headers.get("Link", "")
+            url = _parse_next_link(link_header)
+            params = {}  # params are already encoded in the next URL
 
     return courses
+
+
+def _parse_next_link(link_header: str) -> str | None:
+    """
+    Extract the 'next' URL from a Canvas Link response header.
+
+    Canvas uses RFC 5988 link relations, e.g.:
+      <https://school.instructure.com/api/v1/courses?page=2&per_page=50>; rel="next"
+    """
+    for part in link_header.split(","):
+        part = part.strip()
+        if 'rel="next"' in part:
+            url_part = part.split(";")[0].strip()
+            return url_part.strip("<>")
+    return None
