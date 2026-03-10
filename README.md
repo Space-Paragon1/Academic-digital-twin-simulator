@@ -2,6 +2,8 @@
 
 > A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Includes JWT authentication, an AI advisor powered by Claude, Monte Carlo confidence bands, goal targeting, multi-student monitoring, and Canvas LMS integration.
 
+**Live Demo:** [academic-digital-twin-simulator.vercel.app](https://academic-digital-twin-simulator.vercel.app) · **API:** [academic-digital-twin-simulator-production.up.railway.app/docs](https://academic-digital-twin-simulator-production.up.railway.app/docs)
+
 ## Architecture
 
 ```
@@ -322,8 +324,9 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 
 ## Tech Stack
 
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, python-jose, passlib, pytest
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, python-jose, bcrypt, pytest
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts, Axios
+- **Deployed**: Railway (backend) · Vercel (frontend)
 
 ---
 
