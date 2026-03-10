@@ -19,12 +19,18 @@ _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 
 
+def _truncate(plain: str) -> str:
+    """bcrypt silently breaks on inputs > 72 bytes; truncate to the limit."""
+    encoded = plain.encode("utf-8")
+    return encoded[:72].decode("utf-8", errors="ignore") if len(encoded) > 72 else plain
+
+
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return _pwd_context.hash(_truncate(plain))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return _pwd_context.verify(_truncate(plain), hashed)
 
 
 def create_access_token(student_id: int, email: str) -> str:
