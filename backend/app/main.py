@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.core.config import get_settings
@@ -51,6 +52,20 @@ app.include_router(scenarios.router, prefix="/api/v1")
 app.include_router(canvas.router, prefix="/api/v1")
 app.include_router(advisor.router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all: return 500 JSON with CORS headers so the browser never sees a blocked response."""
+    origin = request.headers.get("origin", "*")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {exc}"},
+        headers={
+            "Access-Control-Allow-Origin": origin,
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
 
 
 @app.get("/health", tags=["health"])
