@@ -71,4 +71,4 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/health", tags=["health"])
 def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "service": settings.APP_NAME}
+    return {"status": "ok", "service": settings.APP_NAME, "version": "sha256-auth-v1"}
