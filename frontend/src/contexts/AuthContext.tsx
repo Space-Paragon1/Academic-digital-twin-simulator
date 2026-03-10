@@ -85,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(STUDENT_ID_KEY);
     setToken(null);
     setUser(null);
   }, []);
