@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { BurnoutBadge } from "@/components/ui/Badge";
-import { Spinner } from "@/components/ui/Spinner";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { Button } from "@/components/ui/Button";
 import {
@@ -32,7 +31,7 @@ function Trend({ dir, good }: { dir: TrendDir; good: "up" | "down" }) {
   if (dir === "flat") return null;
   const isPositive = dir === good;
   return (
-    <span className={`ml-1 text-xs font-semibold ${isPositive ? "text-green-600" : "text-red-500"}`}>
+    <span className={`ml-1 text-xs font-semibold ${isPositive ? "text-green-500" : "text-red-500"}`}>
       {dir === "up" ? "▲" : "▼"}
     </span>
   );
@@ -45,6 +44,43 @@ function trendDir(current: number, previous: number | undefined, threshold = 0.0
   return diff > 0 ? "up" : "down";
 }
 
+function GoalProgressWidget({ predicted, target }: { predicted: number; target: number }) {
+  const pct = Math.min((predicted / target) * 100, 100);
+  const onTrack = predicted >= target * 0.97;
+  const gap = target - predicted;
+  return (
+    <Card accent padding="sm">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Goal Progress
+        </p>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+          onTrack
+            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+        }`}>
+          {onTrack ? "On Track" : `${gap.toFixed(2)} below target`}
+        </span>
+      </div>
+      <div className="flex items-end gap-2 mb-2">
+        <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">{predicted.toFixed(2)}</span>
+        <span className="text-sm text-slate-400 dark:text-slate-500 mb-0.5">/ {target.toFixed(1)} target GPA</span>
+      </div>
+      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+        <div
+          className={`progress-bar-fill h-full rounded-full transition-all duration-700 ${
+            onTrack
+              ? "bg-gradient-to-r from-green-400 to-emerald-500"
+              : "bg-gradient-to-r from-amber-400 to-orange-500"
+          }`}
+          style={{ "--progress-width": `${pct}%` } as React.CSSProperties}
+        />
+      </div>
+      <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">{pct.toFixed(0)}% of target achieved</p>
+    </Card>
+  );
+}
+
 export default function DashboardPage() {
   const [latestResult, setLatestResult] = useState<SimulationResult | null>(null);
   const [prevResult, setPrevResult] = useState<SimulationResult | null>(null);
@@ -55,14 +91,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const studentId = parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
-    if (!studentId) {
-      setIsLoading(false);
-      return;
-    }
-    Promise.all([
-      simulationsApi.history(studentId),
-      studentsApi.get(studentId),
-    ])
+    if (!studentId) { setIsLoading(false); return; }
+    Promise.all([simulationsApi.history(studentId), studentsApi.get(studentId)])
       .then(([results, student]) => {
         setAllResults(results);
         if (results.length > 0) setLatestResult(results[results.length - 1]);
@@ -73,9 +103,7 @@ export default function DashboardPage() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  if (isLoading) {
-    return <PageSkeleton />;
-  }
+  if (isLoading) return <PageSkeleton />;
 
   if (error) {
     return (
@@ -89,10 +117,10 @@ export default function DashboardPage() {
     const hasProfile = !!parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
-        <p className="text-lg font-semibold text-gray-700">
+        <p className="text-lg font-semibold text-slate-800 dark:text-slate-200">
           {hasProfile ? "No simulations yet." : "Welcome! Let's get you set up."}
         </p>
-        <p className="text-sm text-gray-500 max-w-sm">
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm">
           {hasProfile
             ? "Head to Scenarios to run your first simulation."
             : "Create your student profile and add your courses, then run a scenario to see predictions here."}
@@ -111,13 +139,6 @@ export default function DashboardPage() {
 
   const summaryCards = [
     {
-      label: "Predicted GPA",
-      value: summary.predicted_gpa_mean.toFixed(2),
-      sub: `${summary.predicted_gpa_min.toFixed(2)}–${summary.predicted_gpa_max.toFixed(2)} range`,
-      trend: trendDir(summary.predicted_gpa_mean, prevSummary?.predicted_gpa_mean, 0.05),
-      trendGood: "up" as const,
-    },
-    {
       label: "Cognitive Load",
       value: `${lastSnap.cognitive_load.toFixed(0)}/100`,
       sub: "Last week",
@@ -127,7 +148,7 @@ export default function DashboardPage() {
     {
       label: "Retention Score",
       value: `${(lastSnap.retention_score * 100).toFixed(0)}%`,
-      sub: "Average knowledge retained",
+      sub: "Knowledge retained",
       trend: trendDir(lastSnap.retention_score, prevLastSnap?.retention_score, 0.01),
       trendGood: "up" as const,
     },
@@ -138,16 +159,28 @@ export default function DashboardPage() {
       trend: trendDir(summary.sleep_deficit_hours, prevSummary?.sleep_deficit_hours, 0.2),
       trendGood: "down" as const,
     },
+    {
+      label: "Study Hours Needed",
+      value: `${summary.required_study_hours_per_week.toFixed(1)}h`,
+      sub: "Per week recommended",
+      trend: trendDir(summary.required_study_hours_per_week, prevSummary?.required_study_hours_per_week, 0.5),
+      trendGood: "down" as const,
+    },
   ];
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Latest simulation results
-            {prevResult && <span className="ml-2 text-xs text-gray-400">· arrows vs previous scenario</span>}
+            {prevResult && (
+              <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">
+                · arrows vs previous scenario
+              </span>
+            )}
           </p>
         </div>
         <Link href="/scenarios">
@@ -155,88 +188,69 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Summary cards */}
+      {/* Goal progress + burnout */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <GoalProgressWidget predicted={summary.predicted_gpa_mean} target={targetGpa} />
+        <Card padding="sm">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+            Burnout Risk
+          </p>
+          <div className="flex items-center gap-3 mb-2">
+            <BurnoutBadge risk={summary.burnout_risk} />
+            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              {(summary.burnout_probability * 100).toFixed(0)}%
+            </span>
+          </div>
+          {summary.peak_overload_weeks.length > 0 ? (
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Peak load in weeks {summary.peak_overload_weeks.slice(0, 4).join(", ")}
+            </p>
+          ) : (
+            <p className="text-xs text-green-600 dark:text-green-400">No overload weeks detected</p>
+          )}
+        </Card>
+      </div>
+
+      {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {summaryCards.map((stat) => (
           <Card key={stat.label} padding="sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{stat.label}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+              {stat.label}
+            </p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
               {stat.value}
               <Trend dir={stat.trend} good={stat.trendGood} />
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">{stat.sub}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{stat.sub}</p>
           </Card>
         ))}
       </div>
 
-      {/* Burnout risk */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-700">Burnout Risk:</span>
-        <BurnoutBadge risk={summary.burnout_risk} />
-        {summary.peak_overload_weeks.length > 0 && (
-          <span className="text-sm text-gray-500">
-            Peak load in weeks {summary.peak_overload_weeks.slice(0, 4).join(", ")}
-          </span>
-        )}
-      </div>
-
       {/* Recommendation */}
       {summary.recommendation && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+        <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/40 px-4 py-3 text-sm text-indigo-800 dark:text-indigo-300">
+          <span className="font-semibold">Recommendation: </span>
           {summary.recommendation}
         </div>
       )}
 
-      {/* Cross-simulation GPA trend — only shown when there are 2+ runs */}
+      {/* Cross-simulation GPA trend */}
       {allResults.length >= 2 && (
-        <Card
-          title="GPA Across Scenarios"
-          subtitle={`Predicted GPA mean across all ${allResults.length} simulations`}
-        >
+        <Card title="GPA Across Scenarios" subtitle={`Predicted GPA mean across all ${allResults.length} simulations`}>
           <ResponsiveContainer width="100%" height={140}>
             <LineChart
               data={allResults.map((r, i) => ({
                 run: r.scenario_config.scenario_name ?? `#${r.id ?? i + 1}`,
                 gpa: r.summary.predicted_gpa_mean,
-                burnout: r.summary.burnout_risk,
               }))}
               margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
             >
-              <XAxis
-                dataKey="run"
-                tick={{ fontSize: 10, fill: "#9ca3af" }}
-                tickLine={false}
-                axisLine={false}
-                interval={0}
-                angle={-20}
-                textAnchor="end"
-                height={36}
-              />
-              <YAxis
-                domain={[0, 4.0]}
-                ticks={[0, 2.0, 3.0, 3.5, 4.0]}
-                tick={{ fontSize: 10, fill: "#9ca3af" }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip
-                contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                formatter={(v: number) => [v.toFixed(2), "GPA"]}
-              />
-              <ReferenceLine
-                y={targetGpa}
-                stroke="#10b981"
-                strokeDasharray="4 3"
-                label={{ value: "Target", position: "right", fontSize: 9, fill: "#10b981" }}
-              />
-              <Line
-                type="monotone"
-                dataKey="gpa"
-                stroke="#6366f1"
-                strokeWidth={2}
-                dot={{ r: 4, fill: "#6366f1", stroke: "white", strokeWidth: 1.5 }}
-                activeDot={{ r: 6 }}
-              />
+              <XAxis dataKey="run" tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} interval={0} angle={-20} textAnchor="end" height={36} />
+              <YAxis domain={[0, 4.0]} ticks={[0, 2.0, 3.0, 3.5, 4.0]} tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e5e7eb" }} formatter={(v: number) => [v.toFixed(2), "GPA"]} />
+              <ReferenceLine y={targetGpa} stroke="#10b981" strokeDasharray="4 3" label={{ value: "Target", position: "right", fontSize: 9, fill: "#10b981" }} />
+              <Line type="monotone" dataKey="gpa" stroke="#6366f1" strokeWidth={2} dot={{ r: 4, fill: "#6366f1", stroke: "white", strokeWidth: 1.5 }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </Card>
@@ -252,10 +266,7 @@ export default function DashboardPage() {
         </Card>
         <Card title="Burnout Risk" subtitle="Probability based on load, sleep, and recovery history">
           <div className="flex justify-center">
-            <BurnoutRiskGauge
-              probability={summary.burnout_probability}
-              risk={summary.burnout_risk}
-            />
+            <BurnoutRiskGauge probability={summary.burnout_probability} risk={summary.burnout_risk} />
           </div>
         </Card>
         <Card title="Weekly Time Allocation" subtitle="How your 168 hours are distributed">
@@ -263,7 +274,7 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Per-course grade trajectories */}
+      {/* Per-course grades */}
       <Card title="Per-Course Grade Trajectories" subtitle="Predicted grade % per course across the semester">
         <CourseGradesChart snapshots={weekly_snapshots} />
       </Card>
