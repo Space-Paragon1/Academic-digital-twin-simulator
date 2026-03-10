@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     )
 
     APP_NAME: str = "Academic Digital Twin"
+    # Local dev default: SQLite. Production: set DATABASE_URL to a PostgreSQL URL.
+    # e.g. postgresql://user:password@host:5432/dbname
     DATABASE_URL: str = "sqlite:///./academic_twin.db"
     DEBUG: bool = True
     # Stored as a comma-separated string so pydantic-settings never tries to
