@@ -111,7 +111,7 @@ export const PerformanceTrajectory = memo(function PerformanceTrajectory({
           />
           <Tooltip
             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
-            formatter={(v: number | null, name: string) => {
+            formatter={(v, name: string) => {
               if (v === null || v === undefined) return ["-", ""];
               const labels: Record<string, string> = {
                 gpa: "Predicted GPA",
