@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.security import create_access_token, hash_password, verify_password
 from app.db.database import get_db
 from app.db import crud
+from app.models.student import Student
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -56,19 +57,16 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
             detail="An account with that email already exists.",
         )
 
-    from app.schemas.student import StudentCreate
-    student = crud.create_student(
-        db,
-        StudentCreate(
-            name=req.name,
-            email=req.email,
-            target_gpa=req.target_gpa,
-            weekly_work_hours=req.weekly_work_hours,
-            sleep_target_hours=req.sleep_target_hours,
-        ),
+    # Create student with password hash in a single atomic commit
+    student = Student(
+        name=req.name,
+        email=req.email,
+        target_gpa=req.target_gpa,
+        weekly_work_hours=req.weekly_work_hours,
+        sleep_target_hours=req.sleep_target_hours,
+        password_hash=hash_password(req.password),
     )
-    # Store password hash on the newly created student
-    student.password_hash = hash_password(req.password)
+    db.add(student)
     db.commit()
     db.refresh(student)
 
