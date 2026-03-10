@@ -8,7 +8,7 @@ not a breaking change.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password, verify_password
@@ -28,6 +28,13 @@ class RegisterRequest(BaseModel):
     target_gpa: float = 3.5
     weekly_work_hours: float = 0.0
     sleep_target_hours: float = 7.0
+
+    @field_validator("password")
+    @classmethod
+    def password_max_bytes(cls, v: str) -> str:
+        if len(v.encode("utf-8")) > 72:
+            raise ValueError("Password must be 72 characters or fewer.")
+        return v
 
 
 class LoginRequest(BaseModel):
