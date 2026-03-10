@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.db.database import Base, engine
@@ -11,8 +12,14 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create all database tables on startup."""
+    """Create all database tables on startup, then apply any missing column migrations."""
     Base.metadata.create_all(bind=engine)
+    # Idempotent column migrations — safe to run on every startup
+    with engine.connect() as conn:
+        conn.execute(text(
+            "ALTER TABLE students ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
+        ))
+        conn.commit()
     yield
 
 
