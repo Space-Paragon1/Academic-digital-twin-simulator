@@ -1,14 +1,12 @@
 """
 Authentication routes: register, login, and current-user lookup.
 
-Passwords are hashed with bcrypt. JWTs are signed with HS256 and expire
-after 7 days. Existing accounts without a password_hash (e.g. seed data)
-can still be accessed via student ID on the frontend — auth is additive,
-not a breaking change.
+Passwords are hashed with bcrypt (after SHA-256 pre-hashing to remove the
+72-byte bcrypt limit).  JWTs are signed with HS256 and expire after 7 days.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from app.core.security import create_access_token, hash_password, verify_password
@@ -29,13 +27,6 @@ class RegisterRequest(BaseModel):
     weekly_work_hours: float = 0.0
     sleep_target_hours: float = 7.0
 
-    @field_validator("password")
-    @classmethod
-    def password_max_bytes(cls, v: str) -> str:
-        if len(v.encode("utf-8")) > 72:
-            raise ValueError("Password must be 72 characters or fewer.")
-        return v
-
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -54,17 +45,12 @@ class AuthResponse(BaseModel):
 
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
-    """
-    Create a new student account with a hashed password and return a JWT.
-    Rejects if the email is already registered.
-    """
     if crud.get_student_by_email(db, req.email):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An account with that email already exists.",
         )
 
-    # Create student with password hash in a single atomic commit
     student = Student(
         name=req.name,
         email=req.email,
@@ -88,11 +74,6 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=AuthResponse)
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    """
-    Authenticate with email + password and return a JWT.
-    Returns 401 for wrong email or password (intentionally identical message
-    to prevent email enumeration).
-    """
     student = crud.get_student_by_email(db, req.email)
     if not student or not student.password_hash:
         raise HTTPException(
@@ -116,10 +97,6 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=AuthResponse)
 def me(token: str, db: Session = Depends(get_db)):
-    """
-    Validate a JWT and return the associated student info.
-    Used by the frontend on page load to verify a stored token is still valid.
-    """
     from app.core.security import decode_token
     payload = decode_token(token)
     if not payload:
@@ -127,8 +104,7 @@ def me(token: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token is invalid or expired.",
         )
-    student_id = int(payload["sub"])
-    student = crud.get_student(db, student_id)
+    student = crud.get_student(db, int(payload["sub"]))
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
 
