@@ -123,6 +123,7 @@ export default function LoginPage() {
               type="password"
               required
               minLength={6}
+              maxLength={72}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={mode === "register" ? "At least 6 characters" : "••••••••"}
