@@ -56,7 +56,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
             detail="An account with that email already exists.",
         )
 
-    from app.schemas.simulation import StudentCreate
+    from app.schemas.student import StudentCreate
     student = crud.create_student(
         db,
         StudentCreate(
