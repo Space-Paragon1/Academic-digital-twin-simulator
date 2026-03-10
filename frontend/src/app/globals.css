@@ -21,6 +21,11 @@
   }
 }
 
+/* ── Dynamic progress bar (CSS custom property avoids inline style) ───────── */
+.progress-bar-fill {
+  width: var(--progress-width, 0%);
+}
+
 /* ── Utility layer extras ─────────────────────────────────────────────────── */
 @layer utilities {
   .gradient-brand {
