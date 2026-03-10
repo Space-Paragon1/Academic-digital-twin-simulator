@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/profile",   label: "Profile"   },
   { href: "/scenarios", label: "Scenarios" },
+  { href: "/history",   label: "History"   },
   { href: "/compare",   label: "Compare"   },
   { href: "/optimizer", label: "Optimizer" },
   { href: "/advisor",   label: "Advisor"   },
