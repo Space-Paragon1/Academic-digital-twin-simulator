@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     # Stored as a comma-separated string so pydantic-settings never tries to
     # JSON-decode it. Parse into a list with the `cors_origins` property.
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,https://academic-digital-twin-simulator.vercel.app"
     ANTHROPIC_API_KEY: str | None = None
     # Used to sign JWT tokens. Override in production with a long random string.
     SECRET_KEY: str = "dev-secret-change-in-production"
