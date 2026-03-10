@@ -3,10 +3,11 @@ Security utilities: password hashing and JWT tokens.
 
 Password hashing strategy
 --------------------------
-bcrypt has a hard 72-byte input limit.  We eliminate this entirely by
-pre-hashing the plaintext with SHA-256 (always 32 bytes / 44 base64 chars)
-before passing it to bcrypt.  The same transform is applied on verify, so
-passwords of any length work correctly.
+Uses the `bcrypt` library directly (bypassing passlib, which is incompatible
+with bcrypt >= 4.x due to a removed __about__ attribute).
+
+Passwords are SHA-256 pre-hashed before bcrypt so that inputs of any length
+produce a fixed 44-byte base64 string — well within bcrypt's 72-byte limit.
 
 JWTs are signed with HS256 and expire after 7 days.
 """
@@ -16,28 +17,26 @@ import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import get_settings
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
 
-def _prepare(plain: str) -> str:
-    """SHA-256 digest → base64 string (44 ASCII chars, always < 72 bytes)."""
+def _prepare(plain: str) -> bytes:
+    """SHA-256 → base64 = 44 ASCII bytes, always within bcrypt's 72-byte limit."""
     digest = hashlib.sha256(plain.encode("utf-8")).digest()
-    return base64.b64encode(digest).decode("ascii")
+    return base64.b64encode(digest)
 
 
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(_prepare(plain))
+    return bcrypt.hashpw(_prepare(plain), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(_prepare(plain), hashed)
+    return bcrypt.checkpw(_prepare(plain), hashed.encode("utf-8"))
 
 
 def create_access_token(student_id: int, email: str) -> str:
