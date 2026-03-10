@@ -15,11 +15,14 @@ async def lifespan(app: FastAPI):
     """Create all database tables on startup, then apply any missing column migrations."""
     Base.metadata.create_all(bind=engine)
     # Idempotent column migrations — safe to run on every startup
-    with engine.connect() as conn:
-        conn.execute(text(
-            "ALTER TABLE students ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
-        ))
-        conn.commit()
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                "ALTER TABLE students ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
+            ))
+            conn.commit()
+    except Exception:
+        pass  # Column already exists or SQLite (no IF NOT EXISTS needed)
     yield
 
 
