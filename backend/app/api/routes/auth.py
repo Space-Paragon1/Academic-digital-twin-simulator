@@ -125,17 +125,17 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     logger = logging.getLogger(__name__)
     student = crud.get_student_by_email(db, req.email)
     if not student:
-        logger.info("Forgot-password: no account found for %s", req.email)
+        logger.warning("Forgot-password: no account found for %s", req.email)
     elif not student.password_hash:
-        logger.info("Forgot-password: account %s has no password_hash (seed/guest account)", req.email)
+        logger.warning("Forgot-password: account %s has no password_hash (seed/guest account)", req.email)
     else:
         try:
             settings = get_settings()
             token = create_reset_token(req.email)
             reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
-            logger.info("Sending reset email to %s, url=%s", req.email, reset_url)
+            logger.warning("Sending reset email to %s", req.email)
             send_password_reset_email(req.email, reset_url)
-            logger.info("Reset email sent successfully to %s", req.email)
+            logger.warning("Reset email sent successfully to %s", req.email)
         except Exception as exc:
             logger.error("Failed to send reset email to %s: %s", req.email, exc)
 
