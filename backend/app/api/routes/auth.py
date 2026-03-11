@@ -126,8 +126,6 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
     student = crud.get_student_by_email(db, req.email)
     if not student:
         logger.warning("Forgot-password: no account found for %s", req.email)
-    elif not student.password_hash:
-        logger.warning("Forgot-password: account %s has no password_hash (seed/guest account)", req.email)
     else:
         try:
             settings = get_settings()
