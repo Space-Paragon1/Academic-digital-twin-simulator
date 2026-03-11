@@ -95,10 +95,10 @@ export function Navbar() {
               <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 max-w-[140px] truncate hidden md:block">
                 {user.name}
                 {isVerified === true && (
-                  <CheckCircle size={12} className="inline text-green-500 shrink-0" title="Email verified" />
+                  <span title="Email verified"><CheckCircle size={12} className="inline text-green-500 shrink-0" /></span>
                 )}
                 {isVerified === false && (
-                  <AlertCircle size={12} className="inline text-amber-500 shrink-0" title="Email not verified" />
+                  <span title="Email not verified"><AlertCircle size={12} className="inline text-amber-500 shrink-0" /></span>
                 )}
               </span>
               <button
