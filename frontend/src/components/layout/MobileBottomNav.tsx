@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { LayoutDashboard, FlaskConical, CalendarDays, BrainCircuit, Settings } from "lucide-react";
+import { LayoutDashboard, FlaskConical, CalendarDays, BrainCircuit, GraduationCap } from "lucide-react";
 
 const ITEMS = [
   { href: "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { href: "/scenarios", label: "Scenarios",  Icon: FlaskConical    },
   { href: "/schedule",  label: "Schedule",   Icon: CalendarDays    },
   { href: "/advisor",   label: "Advisor",    Icon: BrainCircuit    },
-  { href: "/settings",  label: "Settings",   Icon: Settings        },
+  { href: "/grades",    label: "Grades",     Icon: GraduationCap   },
 ];
 
 export function MobileBottomNav() {

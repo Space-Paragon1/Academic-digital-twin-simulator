@@ -25,6 +25,7 @@ import { useToast } from "@/components/ui/Toaster";
 import type { MonteCarloResult, SimulationResult } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
+const GPA_GOAL_KEY_PREFIX = "adt_gpa_goal_";
 
 type TrendDir = "up" | "down" | "flat";
 
@@ -117,17 +118,36 @@ export default function DashboardPage() {
   // Feature 4: Monte Carlo confidence bands
   const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
   const [mcLoading, setMcLoading] = useState(false);
+  // Feature 5: GPA Goal Tracker
+  const [studentId, setStudentId] = useState<number>(0);
+  const [gpaGoal, setGpaGoal] = useState<number>(3.5);
+  const [gpaGoalInput, setGpaGoalInput] = useState<string>("3.5");
   const toast = useToast();
 
   useEffect(() => {
-    const studentId = parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
-    if (!studentId) { setIsLoading(false); return; }
-    Promise.all([simulationsApi.history(studentId), studentsApi.get(studentId)])
+    const sid = parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
+    if (!sid) { setIsLoading(false); return; }
+    setStudentId(sid);
+    // Load saved GPA goal
+    const savedGoal = localStorage.getItem(`${GPA_GOAL_KEY_PREFIX}${sid}`);
+    if (savedGoal) {
+      const parsed = parseFloat(savedGoal);
+      if (!isNaN(parsed)) {
+        setGpaGoal(parsed);
+        setGpaGoalInput(String(parsed));
+      }
+    }
+    Promise.all([simulationsApi.history(sid), studentsApi.get(sid)])
       .then(([results, student]) => {
         setAllResults(results);
         if (results.length > 0) setLatestResult(results[results.length - 1]);
         if (results.length > 1) setPrevResult(results[results.length - 2]);
         setTargetGpa(student.target_gpa);
+        // Use student target_gpa as default goal if none saved
+        if (!savedGoal) {
+          setGpaGoal(student.target_gpa);
+          setGpaGoalInput(String(student.target_gpa));
+        }
       })
       .catch(() => setError("Failed to load simulation history."))
       .finally(() => setIsLoading(false));
@@ -295,6 +315,79 @@ export default function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* Feature 5: GPA Goal Tracker */}
+      {(() => {
+        const bestGpa = allResults.length > 0
+          ? Math.max(...allResults.map((r) => r.summary.predicted_gpa_mean))
+          : summary.predicted_gpa_mean;
+        const pct = Math.min((bestGpa / gpaGoal) * 100, 100);
+        const met = bestGpa >= gpaGoal;
+        const close = !met && gpaGoal - bestGpa <= 0.2;
+        const barColor = met
+          ? "bg-gradient-to-r from-green-400 to-emerald-500"
+          : close
+          ? "bg-gradient-to-r from-amber-400 to-orange-500"
+          : "bg-gradient-to-r from-red-400 to-rose-500";
+        const badgeColor = met
+          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+          : close
+          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+        return (
+          <Card padding="sm">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                GPA Goal
+              </p>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badgeColor}`}>
+                {met ? "Goal Met!" : close ? "Almost there" : `${(gpaGoal - bestGpa).toFixed(2)} to go`}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex-1">
+                <div className="flex items-end gap-1.5 mb-1">
+                  <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">{bestGpa.toFixed(2)}</span>
+                  <span className="text-sm text-slate-400 dark:text-slate-500 mb-0.5">/ {gpaGoal.toFixed(1)} goal</span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className={`progress-bar-fill h-full rounded-full transition-all duration-700 ${barColor}`}
+                    style={{ "--progress-width": `${pct}%` } as React.CSSProperties}
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{pct.toFixed(0)}% of goal achieved (best sim)</p>
+              </div>
+              <div className="shrink-0">
+                <label
+                  htmlFor="gpa-goal-input"
+                  className="block text-[10px] font-medium text-slate-500 dark:text-slate-400 mb-1"
+                >
+                  Set Goal
+                </label>
+                <input
+                  id="gpa-goal-input"
+                  type="number"
+                  min={0}
+                  max={4.0}
+                  step={0.1}
+                  value={gpaGoalInput}
+                  aria-label="Target GPA goal (0 to 4.0)"
+                  onChange={(e) => setGpaGoalInput(e.target.value)}
+                  onBlur={() => {
+                    const val = parseFloat(gpaGoalInput);
+                    if (!isNaN(val) && val >= 0 && val <= 4.0) {
+                      setGpaGoal(val);
+                      if (studentId) localStorage.setItem(`${GPA_GOAL_KEY_PREFIX}${studentId}`, String(val));
+                    }
+                  }}
+                  className="w-16 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-sm text-center font-semibold text-slate-900 dark:text-slate-100 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                />
+              </div>
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
