@@ -23,10 +23,10 @@ async def lifespan(app: FastAPI):
     # Idempotent column migrations — safe to run on every startup
     _migrations = [
         "ALTER TABLE students ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
-        "ALTER TABLE students ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT 1",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT TRUE",
         "ALTER TABLE students ADD COLUMN IF NOT EXISTS verification_token VARCHAR(512)",
-        "ALTER TABLE students ADD COLUMN IF NOT EXISTS notify_burnout_alert BOOLEAN NOT NULL DEFAULT 1",
-        "ALTER TABLE students ADD COLUMN IF NOT EXISTS notify_weekly_summary BOOLEAN NOT NULL DEFAULT 1",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS notify_burnout_alert BOOLEAN NOT NULL DEFAULT TRUE",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS notify_weekly_summary BOOLEAN NOT NULL DEFAULT TRUE",
         "ALTER TABLE students ADD COLUMN IF NOT EXISTS theme_preference VARCHAR(10) NOT NULL DEFAULT 'system'",
     ]
     for _sql in _migrations:
