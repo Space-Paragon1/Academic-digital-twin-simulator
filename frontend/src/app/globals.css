@@ -2,6 +2,77 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Print / PDF export styles (Feature 10) ───────────────────────────────── */
+@media print {
+  /* Hide chrome: navbar, sidebar, mobile nav, all buttons, forms */
+  header,
+  aside,
+  nav,
+  button,
+  form,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Reset layout so main content fills the page */
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 11pt;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Make sure dark-mode backgrounds print as white */
+  * {
+    background-color: transparent !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  /* Keep borders visible for cards */
+  .rounded-2xl,
+  .rounded-xl {
+    border: 1px solid #e2e8f0 !important;
+  }
+
+  /* Page breaks between major sections */
+  .space-y-6 > * {
+    page-break-inside: avoid;
+  }
+
+  .page-break {
+    page-break-after: always;
+  }
+
+  /* Print header */
+  body::before {
+    content: "Academic Digital Twin — Simulation Report";
+    display: block;
+    font-size: 16pt;
+    font-weight: 700;
+    text-align: center;
+    padding-bottom: 12pt;
+    border-bottom: 2px solid #000;
+    margin-bottom: 16pt;
+  }
+
+  /* Ensure charts / SVGs are visible */
+  svg {
+    max-width: 100% !important;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: #000 !important;
+  }
+}
+
 /* ── Custom scrollbar ─────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -1,4 +1,4 @@
-# cache-bust: 2
+# cache-bust: 3
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 sqlalchemy>=2.0.0
@@ -16,3 +16,4 @@ anthropic>=0.40.0
 python-jose[cryptography]>=3.3.0
 bcrypt>=4.0.0
 resend>=2.0.0
+slowapi>=0.1.9

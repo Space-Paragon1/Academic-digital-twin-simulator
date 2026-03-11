@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { ScenarioBuilder } from "@/components/forms/ScenarioBuilder";
+import { WhatIfPanel } from "@/components/ui/WhatIfPanel";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useStudent } from "@/hooks/useStudent";
 import { useScenario } from "@/hooks/useScenario";
@@ -144,8 +145,18 @@ export default function ScenariosPage() {
           </div>
         )}
 
+        {/* What-if panel — shows once there's at least one result */}
+        {result && (
+          <WhatIfPanel
+            baseGpa={result.summary.predicted_gpa_mean}
+            baseBurnout={result.summary.burnout_probability * 100}
+            baseSleep={result.scenario_config.sleep_target_hours}
+            baseWork={result.scenario_config.work_hours_per_week}
+          />
+        )}
+
         {/* History */}
-        <h2 className="text-base font-semibold text-gray-900">Simulation History</h2>
+        <h2 className="text-base font-semibold text-gray-900 dark:text-slate-100">Simulation History</h2>
         {history.length === 0 ? (
           <p className="text-sm text-gray-500 italic">No simulations yet. Run your first scenario above.</p>
         ) : (

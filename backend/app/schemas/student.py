@@ -20,10 +20,22 @@ class StudentUpdate(BaseModel):
     target_gpa: float | None = Field(default=None, ge=0.0, le=4.0)
     weekly_work_hours: float | None = Field(default=None, ge=0.0, le=80.0)
     sleep_target_hours: float | None = Field(default=None, ge=4.0, le=12.0)
+    # Feature 2: notification preferences
+    notify_burnout_alert: bool | None = None
+    notify_weekly_summary: bool | None = None
+    # Feature 7: theme preference
+    theme_preference: str | None = Field(default=None, max_length=10)
 
 
 class StudentOut(StudentBase):
     id: int
     created_at: datetime
+    # Feature 1: email verification
+    is_verified: bool = True
+    # Feature 2: notification preferences
+    notify_burnout_alert: bool = True
+    notify_weekly_summary: bool = True
+    # Feature 7: theme preference
+    theme_preference: str = "system"
 
     model_config = {"from_attributes": True}

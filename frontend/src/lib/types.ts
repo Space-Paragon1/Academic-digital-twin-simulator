@@ -8,6 +8,13 @@ export interface Student {
   weekly_work_hours: number;
   sleep_target_hours: number;
   created_at: string;
+  // Feature 1: email verification
+  is_verified?: boolean;
+  // Feature 2: notification preferences
+  notify_burnout_alert?: boolean;
+  notify_weekly_summary?: boolean;
+  // Feature 7: theme preference
+  theme_preference?: string;
 }
 
 export interface StudentCreate {
@@ -24,6 +31,11 @@ export interface StudentUpdate {
   target_gpa?: number;
   weekly_work_hours?: number;
   sleep_target_hours?: number;
+  // Feature 2: notification preferences
+  notify_burnout_alert?: boolean;
+  notify_weekly_summary?: boolean;
+  // Feature 7: theme preference
+  theme_preference?: string;
 }
 
 // ── Course ────────────────────────────────────────────────────────────────────
