@@ -20,8 +20,9 @@ import { PerformanceTrajectory } from "@/components/charts/PerformanceTrajectory
 import { BurnoutRiskGauge } from "@/components/charts/BurnoutRiskGauge";
 import { TimeAllocationChart } from "@/components/charts/TimeAllocationChart";
 import { CourseGradesChart } from "@/components/charts/CourseGradesChart";
-import { simulationsApi, studentsApi } from "@/lib/api";
-import type { SimulationResult } from "@/lib/types";
+import { simulationsApi, studentsApi, accountApi, monteCarloApi } from "@/lib/api";
+import { useToast } from "@/components/ui/Toaster";
+import type { MonteCarloResult, SimulationResult } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
 
@@ -42,6 +43,29 @@ function trendDir(current: number, previous: number | undefined, threshold = 0.0
   const diff = current - previous;
   if (Math.abs(diff) < threshold) return "flat";
   return diff > 0 ? "up" : "down";
+}
+
+function computeStreak(results: SimulationResult[]): number {
+  if (results.length === 0) return 0;
+  const dateSet = new Set(
+    results.filter((r) => r.created_at).map((r) => new Date(r.created_at!).toDateString())
+  );
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (dateSet.has(d.toDateString())) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function daysSinceLast(results: SimulationResult[]): number | null {
+  const withDate = results.filter((r) => r.created_at);
+  if (withDate.length === 0) return null;
+  const last = new Date(withDate[withDate.length - 1].created_at!);
+  return Math.floor((Date.now() - last.getTime()) / 86_400_000);
 }
 
 function GoalProgressWidget({ predicted, target }: { predicted: number; target: number }) {
@@ -88,6 +112,12 @@ export default function DashboardPage() {
   const [targetGpa, setTargetGpa] = useState<number>(3.5);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  // Feature 4: Monte Carlo confidence bands
+  const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
+  const [mcLoading, setMcLoading] = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     const studentId = parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
@@ -168,8 +198,27 @@ export default function DashboardPage() {
     },
   ];
 
+  const streak = computeStreak(allResults);
+  const daysSince = daysSinceLast(allResults);
+  const showNudge = !nudgeDismissed && daysSince !== null && daysSince >= 7;
+
   return (
     <div className="space-y-6">
+      {/* Nudge banner */}
+      {showNudge && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-4 py-3">
+          <p className="text-sm text-amber-800 dark:text-amber-300">
+            You haven&apos;t run a simulation in <strong>{daysSince} days</strong>. Run one to keep your predictions up to date.
+          </p>
+          <div className="flex items-center gap-2 ml-3 shrink-0">
+            <Link href="/scenarios">
+              <Button size="sm">Run Now</Button>
+            </Link>
+            <button type="button" onClick={() => setNudgeDismissed(true)} className="text-amber-500 hover:text-amber-700 text-lg leading-none px-1" aria-label="Dismiss">×</button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -183,9 +232,45 @@ export default function DashboardPage() {
             )}
           </p>
         </div>
-        <Link href="/scenarios">
-          <Button variant="secondary" size="sm">Run New Scenario</Button>
-        </Link>
+        <div className="flex items-center gap-3 flex-wrap">
+          {streak > 0 && (
+            <div className="flex items-center gap-1.5 rounded-full bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 px-3 py-1">
+              <span className="text-base leading-none">🔥</span>
+              <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">{streak}-day streak</span>
+            </div>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            isLoading={summaryLoading}
+            onClick={async () => {
+              const sid = parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
+              if (!sid) return;
+              setSummaryLoading(true);
+              try {
+                await accountApi.sendSummary(sid);
+                toast.success("Summary email sent to your inbox!");
+              } catch (err: unknown) {
+                toast.error(err instanceof Error ? err.message : "Failed to send summary.");
+              } finally {
+                setSummaryLoading(false);
+              }
+            }}
+          >
+            Email Summary
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            title="Opens the browser print dialog — save as PDF to download a report"
+            onClick={() => window.print()}
+          >
+            Download Report
+          </Button>
+          <Link href="/scenarios">
+            <Button variant="secondary" size="sm">Run New Scenario</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Goal progress + burnout */}
@@ -226,6 +311,68 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {/* Feature 4: GPA Confidence Bands */}
+      <Card title="GPA Confidence Analysis" subtitle="Monte Carlo simulation — run 200 scenarios to see p10/p50/p90 GPA bands">
+        {mcResult ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-red-500 dark:text-red-400">P10 (Pessimistic)</p>
+                <p className="text-2xl font-bold text-red-700 dark:text-red-300 mt-1">{mcResult.p10_gpa.toFixed(2)}</p>
+                <p className="text-xs text-red-400 mt-0.5">10th percentile</p>
+              </div>
+              <div className="text-center rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-indigo-500 dark:text-indigo-400">P50 (Median)</p>
+                <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300 mt-1">{mcResult.p50_gpa.toFixed(2)}</p>
+                <p className="text-xs text-indigo-400 mt-0.5">50th percentile</p>
+              </div>
+              <div className="text-center rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-green-500 dark:text-green-400">P90 (Optimistic)</p>
+                <p className="text-2xl font-bold text-green-700 dark:text-green-300 mt-1">{mcResult.p90_gpa.toFixed(2)}</p>
+                <p className="text-xs text-green-400 mt-0.5">90th percentile</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Based on {mcResult.runs} Monte Carlo runs with ±15% study variance. Mean burnout probability: {(mcResult.burnout_probability_mean * 100).toFixed(0)}%.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMcResult(null)}
+            >
+              Clear Results
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Run a Monte Carlo analysis on your latest scenario to see optimistic, median, and pessimistic GPA outcomes.
+            </p>
+            <Button
+              size="sm"
+              isLoading={mcLoading}
+              onClick={async () => {
+                if (!latestResult) return;
+                setMcLoading(true);
+                try {
+                  const res = await monteCarloApi.run({
+                    scenario_config: latestResult.scenario_config,
+                    monte_carlo: { runs: 200, study_variance: 0.15 },
+                  });
+                  setMcResult(res);
+                } catch (err: unknown) {
+                  toast.error(err instanceof Error ? err.message : "Monte Carlo failed.");
+                } finally {
+                  setMcLoading(false);
+                }
+              }}
+            >
+              {mcLoading ? "Running 200 scenarios…" : "Run Monte Carlo Analysis"}
+            </Button>
+          </div>
+        )}
+      </Card>
 
       {/* Recommendation */}
       {summary.recommendation && (

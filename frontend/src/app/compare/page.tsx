@@ -164,6 +164,33 @@ export default function ComparePage() {
         })}
       </div>
 
+      {/* Feature 6: Winner summary bar */}
+      {simA && simB && (() => {
+        const gpaWinner  = simA.summary.predicted_gpa_mean  >= simB.summary.predicted_gpa_mean  ? labelA : labelB;
+        const burnWinner = simA.summary.burnout_probability <= simB.summary.burnout_probability ? labelA : labelB;
+        const sleepWinner = simA.summary.sleep_deficit_hours <= simB.summary.sleep_deficit_hours ? labelA : labelB;
+        const winColor = (label: string, winner: string) =>
+          label === winner
+            ? "bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-800 dark:text-green-300"
+            : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400";
+        return (
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { category: "GPA", winner: gpaWinner },
+              { category: "Lower Burnout", winner: burnWinner },
+              { category: "Less Sleep Deficit", winner: sleepWinner },
+            ].map(({ category, winner }) => (
+              <div key={category} className="rounded-xl border p-3 text-center bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500 mb-1">{category} Winner</p>
+                <span className={`inline-block rounded-lg border px-2 py-0.5 text-xs font-semibold ${winColor(winner, winner)}`}>
+                  {winner}
+                </span>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Comparison content */}
       {simA && simB ? (
         <>

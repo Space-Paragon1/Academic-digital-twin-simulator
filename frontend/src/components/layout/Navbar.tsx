@@ -1,21 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { Moon, Sun, LogIn, LogOut } from "lucide-react";
+import { Moon, Sun, LogIn, LogOut, CheckCircle, AlertCircle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { studentsApi } from "@/lib/api";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/profile",   label: "Profile"   },
   { href: "/scenarios", label: "Scenarios" },
+  { href: "/schedule",  label: "Schedule"  },
   { href: "/history",   label: "History"   },
   { href: "/compare",   label: "Compare"   },
   { href: "/optimizer", label: "Optimizer" },
   { href: "/advisor",   label: "Advisor"   },
+  { href: "/settings",  label: "Settings"  },
 ];
 
 export function Navbar() {
@@ -23,6 +26,12 @@ export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggle } = useTheme();
   const { user, logout } = useAuth();
+  const [isVerified, setIsVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!user) { setIsVerified(null); return; }
+    studentsApi.get(user.studentId).then((s) => setIsVerified(s.is_verified ?? true)).catch(() => {});
+  }, [user]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-sm">
@@ -83,8 +92,14 @@ export function Navbar() {
           {/* Auth button */}
           {user ? (
             <div className="flex items-center gap-2 ml-1">
-              <span className="text-xs text-slate-500 dark:text-slate-400 max-w-[120px] truncate hidden md:block">
+              <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 max-w-[140px] truncate hidden md:block">
                 {user.name}
+                {isVerified === true && (
+                  <CheckCircle size={12} className="inline text-green-500 shrink-0" title="Email verified" />
+                )}
+                {isVerified === false && (
+                  <AlertCircle size={12} className="inline text-amber-500 shrink-0" title="Email not verified" />
+                )}
               </span>
               <button
                 type="button"

@@ -111,6 +111,15 @@ def delete_simulation_run(db: Session, sim_id: int) -> bool:
     return True
 
 
+def delete_student(db: Session, student_id: int) -> bool:
+    student = get_student(db, student_id)
+    if not student:
+        return False
+    db.delete(student)
+    db.commit()
+    return True
+
+
 # ── All Students ───────────────────────────────────────────────────────────────
 
 def get_all_students(db: Session) -> list[Student]:

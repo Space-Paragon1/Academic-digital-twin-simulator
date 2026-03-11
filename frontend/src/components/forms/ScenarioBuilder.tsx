@@ -1,8 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import type { Course, ScenarioConfig, SleepSchedule, StudyStrategy } from "@/lib/types";
+
+const TEMPLATES_KEY = "adt_scenario_templates";
+
+interface ScenarioTemplate {
+  name: string;
+  numWeeks: number;
+  workHours: number;
+  sleepHours: number;
+  strategy: StudyStrategy;
+  extracurricularHours: number;
+}
+
+function loadTemplates(): ScenarioTemplate[] {
+  try { return JSON.parse(localStorage.getItem(TEMPLATES_KEY) ?? "[]"); } catch { return []; }
+}
+
+function saveTemplate(tpl: ScenarioTemplate) {
+  const existing = loadTemplates().filter((t) => t.name !== tpl.name);
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify([...existing, tpl]));
+}
+
+function deleteTemplate(name: string) {
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(loadTemplates().filter((t) => t.name !== name)));
+}
 
 interface ScenarioBuilderProps {
   studentId: number;
@@ -31,6 +55,7 @@ function defaultExamWeeks(numWeeks: number): number[] {
 }
 
 export function ScenarioBuilder({ studentId, courses, onRun, isLoading, initialConfig }: ScenarioBuilderProps) {
+  const [templates, setTemplates] = useState<ScenarioTemplate[]>([]);
   const [numWeeks,          setNumWeeks]          = useState(initialConfig?.num_weeks             ?? 16);
   const [workHours,         setWorkHours]          = useState(initialConfig?.work_hours_per_week   ?? 10);
   const [sleepHours,        setSleepHours]         = useState(initialConfig?.sleep_target_hours    ?? 7.0);
@@ -51,6 +76,29 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading, initialC
   const [sleepSchedule,        setSleepSchedule]        = useState<SleepSchedule>(initialConfig?.sleep_schedule ?? "fixed");
   const [dropCourseId,         setDropCourseId]         = useState<number | null>(initialConfig?.drop_course_id ?? null);
   const [dropAtWeek,           setDropAtWeek]           = useState<number>(initialConfig?.drop_at_week ?? 8);
+
+  useEffect(() => { setTemplates(loadTemplates()); }, []);
+
+  const handleSaveTemplate = () => {
+    const name = scenarioName.trim() || `${numWeeks}wk · ${workHours}h work · ${strategy}`;
+    saveTemplate({ name, numWeeks, workHours, sleepHours: sleepHours, strategy, extracurricularHours });
+    setTemplates(loadTemplates());
+  };
+
+  const handleDeleteTemplate = (name: string) => {
+    deleteTemplate(name);
+    setTemplates(loadTemplates());
+  };
+
+  const applyTemplate = (tpl: ScenarioTemplate) => {
+    setNumWeeks(tpl.numWeeks);
+    setWorkHours(tpl.workHours);
+    setSleepHours(tpl.sleepHours);
+    setStrategy(tpl.strategy);
+    setExtracurricularHours(tpl.extracurricularHours);
+    setExamWeeks(defaultExamWeeks(tpl.numWeeks));
+    setScenarioName(tpl.name);
+  };
 
   const applyPreset = (preset: typeof PRESETS[number]) => {
     setNumWeeks(preset.numWeeks);
@@ -119,19 +167,46 @@ export function ScenarioBuilder({ studentId, courses, onRun, isLoading, initialC
         </div>
       </div>
 
+      {/* My Templates */}
+      {templates.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">My Templates</p>
+          <div className="flex flex-col gap-1.5">
+            {templates.map((tpl) => (
+              <div key={tpl.name} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <button type="button" onClick={() => applyTemplate(tpl)} className="text-xs font-medium text-slate-700 hover:text-brand-600 text-left">
+                  {tpl.name}
+                </button>
+                <button type="button" onClick={() => handleDeleteTemplate(tpl.name)} className="text-slate-300 hover:text-red-400 text-sm leading-none ml-2">×</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Scenario name */}
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1">
           Scenario Name
           <span className="ml-1 text-xs font-normal text-slate-400">(auto-generated if blank)</span>
         </label>
-        <input
-          type="text"
-          value={scenarioName}
-          onChange={(e) => setScenarioName(e.target.value)}
-          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
-          placeholder={`${numWeeks}wk · ${workHours}h work · ${strategy}`}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={scenarioName}
+            onChange={(e) => setScenarioName(e.target.value)}
+            className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+            placeholder={`${numWeeks}wk · ${workHours}h work · ${strategy}`}
+          />
+          <button
+            type="button"
+            onClick={handleSaveTemplate}
+            title="Save as template"
+            className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-medium text-slate-500 hover:border-brand-400 hover:text-brand-600 transition-colors"
+          >
+            Save
+          </button>
+        </div>
       </div>
 
       {/* Semester length */}

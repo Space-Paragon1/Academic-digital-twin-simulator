@@ -72,3 +72,25 @@ def decode_reset_token(token: str) -> Optional[str]:
         return payload.get("sub")  # the email
     except JWTError:
         return None
+
+
+EMAIL_VERIFY_EXPIRE_HOURS = 24
+
+
+def create_email_verify_token(student_id: int) -> str:
+    """Create a 24-hour JWT for email verification."""
+    settings = get_settings()
+    expire = datetime.now(timezone.utc) + timedelta(hours=EMAIL_VERIFY_EXPIRE_HOURS)
+    payload = {"sub": str(student_id), "type": "email_verify", "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+
+def decode_email_verify_token(token: str) -> Optional[int]:
+    """Verify an email-verification JWT. Returns student_id on success, None otherwise."""
+    try:
+        payload = jwt.decode(token, get_settings().SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") != "email_verify":
+            return None
+        return int(payload["sub"])
+    except (JWTError, KeyError, ValueError):
+        return None
