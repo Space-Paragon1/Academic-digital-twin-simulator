@@ -14,19 +14,25 @@ import {
   Settings,
   CalendarDays,
   Lock,
+  GraduationCap,
+  CalendarRange,
+  Link2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 const navItems: { href: string; label: string; Icon: LucideIcon; description: string }[] = [
-  { href: "/dashboard", label: "Dashboard",  Icon: LayoutDashboard, description: "Latest results"    },
-  { href: "/profile",   label: "My Profile", Icon: UserCircle,      description: "Courses & setup"   },
-  { href: "/scenarios", label: "Scenarios",  Icon: FlaskConical,    description: "Run simulations"   },
-  { href: "/schedule",  label: "Schedule",   Icon: CalendarDays,    description: "Weekly study plan"  },
-  { href: "/history",   label: "History",    Icon: History,         description: "All past runs"     },
-  { href: "/compare",   label: "Compare",    Icon: GitCompare,      description: "Side-by-side"      },
-  { href: "/optimizer", label: "Optimizer",  Icon: Sparkles,        description: "Best schedule"     },
-  { href: "/advisor",   label: "Advisor",    Icon: BrainCircuit,    description: "AI + Goal targeting"},
-  { href: "/settings",  label: "Settings",   Icon: Settings,        description: "Account & security" },
+  { href: "/dashboard", label: "Dashboard",      Icon: LayoutDashboard, description: "Latest results"    },
+  { href: "/profile",   label: "My Profile",     Icon: UserCircle,      description: "Courses & setup"   },
+  { href: "/scenarios", label: "Scenarios",      Icon: FlaskConical,    description: "Run simulations"   },
+  { href: "/schedule",  label: "Schedule",       Icon: CalendarDays,    description: "Weekly study plan"  },
+  { href: "/planner",   label: "Planner",        Icon: CalendarRange,   description: "Multi-semester"    },
+  { href: "/history",   label: "History",        Icon: History,         description: "All past runs"     },
+  { href: "/grades",    label: "Grades",         Icon: GraduationCap,   description: "Actual grades"     },
+  { href: "/compare",   label: "Compare",        Icon: GitCompare,      description: "Side-by-side"      },
+  { href: "/optimizer", label: "Optimizer",      Icon: Sparkles,        description: "Best schedule"     },
+  { href: "/advisor",   label: "Advisor",        Icon: BrainCircuit,    description: "AI + Goal targeting"},
+  { href: "/canvas",    label: "Canvas Import",  Icon: Link2,           description: "Import from LMS"   },
+  { href: "/settings",  label: "Settings",       Icon: Settings,        description: "Account & security" },
 ];
 
 export function Sidebar() {
