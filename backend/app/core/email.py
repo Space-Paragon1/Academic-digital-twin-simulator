@@ -1,32 +1,36 @@
 """
-Email utility — sends password-reset emails via Gmail SMTP (TLS on port 587).
+Email utility — sends password-reset emails via Resend (https://resend.com).
 
-Required environment variables (set in .env or Railway):
-    SMTP_USER     = youremail@gmail.com
-    SMTP_PASSWORD = 16-character Google App Password
-    FRONTEND_URL  = https://academic-digital-twin-simulator.vercel.app
+Uses HTTPS (port 443) so it works on Railway, Render, and any cloud host that
+blocks outbound SMTP ports (587 / 465).
+
+Required environment variable (set in .env or Railway):
+    RESEND_API_KEY = re_xxxxxxxxxxxxxxxxxxxx
+
+Optional:
+    RESEND_FROM    = noreply@yourdomain.com   (default: onboarding@resend.dev — works
+                     without a custom domain on the free plan, sends from Resend's domain)
+    FRONTEND_URL   = https://academic-digital-twin-simulator.vercel.app
 """
 
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import resend
 
 from app.core.config import get_settings
 
 
 def send_password_reset_email(to_email: str, reset_url: str) -> None:
-    """Send a password-reset link to *to_email*.
+    """Send a password-reset link to *to_email* via Resend.
 
-    Raises RuntimeError if SMTP credentials are not configured.
-    Raises smtplib.SMTPException on delivery failure.
+    Raises RuntimeError if RESEND_API_KEY is not configured.
+    Raises resend.exceptions.ResendError on delivery failure.
     """
     settings = get_settings()
-    if not settings.SMTP_USER or not settings.SMTP_PASSWORD:
+    if not settings.RESEND_API_KEY:
         raise RuntimeError(
-            "Email is not configured. Set SMTP_USER and SMTP_PASSWORD in your environment."
+            "Email is not configured. Set RESEND_API_KEY in your environment."
         )
 
-    subject = "Reset your Academic Digital Twin password"
+    resend.api_key = settings.RESEND_API_KEY
 
     html_body = f"""
 <!DOCTYPE html>
@@ -41,13 +45,9 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
         <!-- Header -->
         <tr>
           <td style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:32px 40px;text-align:center;">
-            <div style="display:inline-flex;align-items:center;gap:10px;">
-              <div style="width:36px;height:36px;background:rgba(255,255,255,0.2);border-radius:10px;
-                          display:flex;align-items:center;justify-content:center;font-size:20px;">🎓</div>
-              <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.3px;">
-                Academic<span style="color:#c7d2fe;">Twin</span>
-              </span>
-            </div>
+            <span style="color:#ffffff;font-size:18px;font-weight:700;letter-spacing:-0.3px;">
+              Academic<span style="color:#c7d2fe;">Twin</span>
+            </span>
           </td>
         </tr>
 
@@ -69,14 +69,14 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
                   <a href="{reset_url}"
                      style="display:inline-block;padding:14px 32px;color:#ffffff;
                             font-size:15px;font-weight:600;text-decoration:none;
-                            border-radius:10px;letter-spacing:0.1px;">
+                            border-radius:10px;">
                     Reset My Password
                   </a>
                 </td>
               </tr>
             </table>
 
-            <p style="margin:0 0 12px;color:#94a3b8;font-size:13px;line-height:1.5;">
+            <p style="margin:0 0 12px;color:#94a3b8;font-size:13px;">
               Or copy this link into your browser:
             </p>
             <p style="margin:0 0 28px;word-break:break-all;">
@@ -84,10 +84,8 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
             </p>
 
             <hr style="border:none;border-top:1px solid #f1f5f9;margin:0 0 24px;">
-
             <p style="margin:0;color:#94a3b8;font-size:13px;line-height:1.5;">
               If you did not request a password reset, you can safely ignore this email.
-              Your password will not change.
             </p>
           </td>
         </tr>
@@ -100,7 +98,6 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
             </p>
           </td>
         </tr>
-
       </table>
     </td></tr>
   </table>
@@ -108,21 +105,9 @@ def send_password_reset_email(to_email: str, reset_url: str) -> None:
 </html>
 """
 
-    text_body = (
-        f"Reset your Academic Digital Twin password\n\n"
-        f"Click the link below (expires in 15 minutes):\n{reset_url}\n\n"
-        f"If you did not request this, ignore this email."
-    )
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"Academic Digital Twin <{settings.SMTP_USER}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(text_body, "plain"))
-    msg.attach(MIMEText(html_body, "html"))
-
-    with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-        server.sendmail(settings.SMTP_USER, to_email, msg.as_string())
+    resend.Emails.send({
+        "from": settings.RESEND_FROM,
+        "to": [to_email],
+        "subject": "Reset your Academic Digital Twin password",
+        "html": html_body,
+    })

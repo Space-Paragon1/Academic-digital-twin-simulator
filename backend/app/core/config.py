@@ -21,13 +21,13 @@ class Settings(BaseSettings):
     # Used to sign JWT tokens. Override in production with a long random string.
     SECRET_KEY: str = "dev-secret-change-in-production"
 
-    # ── Email (Gmail SMTP) ────────────────────────────────────────────────────
-    # SMTP_USER  = your Gmail address, e.g. you@gmail.com
-    # SMTP_PASSWORD = 16-char App Password from Google Account → Security → App Passwords
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str | None = None
-    SMTP_PASSWORD: str | None = None
+    # ── Email (Resend — https://resend.com) ──────────────────────────────────
+    # Railway blocks outbound SMTP (ports 587/465); Resend uses HTTPS (443).
+    # Sign up free at resend.com → API Keys → Create Key
+    RESEND_API_KEY: str | None = None
+    # Sender address shown in the From field.
+    # On the free plan without a custom domain use: onboarding@resend.dev
+    RESEND_FROM: str = "Academic Digital Twin <onboarding@resend.dev>"
 
     # ── Frontend URL (used in password-reset links) ───────────────────────────
     FRONTEND_URL: str = "https://academic-digital-twin-simulator.vercel.app"
