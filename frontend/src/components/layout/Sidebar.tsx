@@ -11,6 +11,9 @@ import {
   Sparkles,
   BrainCircuit,
   History,
+  Settings,
+  CalendarDays,
+  Lock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -18,10 +21,12 @@ const navItems: { href: string; label: string; Icon: LucideIcon; description: st
   { href: "/dashboard", label: "Dashboard",  Icon: LayoutDashboard, description: "Latest results"    },
   { href: "/profile",   label: "My Profile", Icon: UserCircle,      description: "Courses & setup"   },
   { href: "/scenarios", label: "Scenarios",  Icon: FlaskConical,    description: "Run simulations"   },
+  { href: "/schedule",  label: "Schedule",   Icon: CalendarDays,    description: "Weekly study plan"  },
   { href: "/history",   label: "History",    Icon: History,         description: "All past runs"     },
   { href: "/compare",   label: "Compare",    Icon: GitCompare,      description: "Side-by-side"      },
   { href: "/optimizer", label: "Optimizer",  Icon: Sparkles,        description: "Best schedule"     },
   { href: "/advisor",   label: "Advisor",    Icon: BrainCircuit,    description: "AI + Goal targeting"},
+  { href: "/settings",  label: "Settings",   Icon: Settings,        description: "Account & security" },
 ];
 
 export function Sidebar() {
@@ -71,6 +76,36 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {/* Admin link — bottom separator */}
+      <div className="px-3 pb-2">
+        <Link
+          href="/admin"
+          className={clsx(
+            "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150",
+            pathname === "/admin"
+              ? "bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-md"
+              : "text-slate-600 hover:bg-slate-800 hover:text-slate-100"
+          )}
+        >
+          <Lock
+            size={17}
+            className={clsx(
+              "shrink-0 transition-transform duration-150",
+              pathname === "/admin" ? "text-white" : "text-slate-600 group-hover:text-slate-300"
+            )}
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-medium leading-tight">Admin</p>
+            <p className={clsx(
+              "text-[11px] leading-tight truncate mt-0.5",
+              pathname === "/admin" ? "text-blue-100/70" : "text-slate-600 group-hover:text-slate-500"
+            )}>
+              Student overview
+            </p>
+          </div>
+        </Link>
+      </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-slate-800">

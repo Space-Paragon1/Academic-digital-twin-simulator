@@ -148,6 +148,29 @@ export const passwordApi = {
 
   resetPassword: (token: string, new_password: string) =>
     api.post<{ message: string }>("/api/v1/auth/reset-password", { token, new_password }).then((r) => r.data),
+
+  changePassword: (student_id: number, current_password: string, new_password: string) =>
+    api.post<{ message: string }>("/api/v1/auth/change-password", { student_id, current_password, new_password }).then((r) => r.data),
+};
+
+// ── Email verification ────────────────────────────────────────────────────────
+
+export const emailVerificationApi = {
+  sendVerification: (student_id: number) =>
+    api.post<{ message: string }>("/api/v1/auth/send-verification", { student_id }).then((r) => r.data),
+
+  verifyEmail: (token: string) =>
+    api.post<{ message: string }>("/api/v1/auth/verify-email", { token }).then((r) => r.data),
+};
+
+// ── Account management ────────────────────────────────────────────────────────
+
+export const accountApi = {
+  delete: (studentId: number) =>
+    api.delete(`/api/v1/students/${studentId}`).then((r) => r.data),
+
+  sendSummary: (studentId: number) =>
+    api.post<{ message: string }>(`/api/v1/students/${studentId}/send-summary`).then((r) => r.data),
 };
 
 // ── Advisor ───────────────────────────────────────────────────────────────────

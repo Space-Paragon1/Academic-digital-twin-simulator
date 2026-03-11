@@ -3,10 +3,15 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import get_settings
 from app.db.database import Base, engine
 from app.api.routes import students, courses, simulations, scenarios, canvas, advisor, auth
+
+limiter = Limiter(key_func=get_remote_address)
 
 settings = get_settings()
 
@@ -16,14 +21,21 @@ async def lifespan(app: FastAPI):
     """Create all database tables on startup, then apply any missing column migrations."""
     Base.metadata.create_all(bind=engine)
     # Idempotent column migrations — safe to run on every startup
-    try:
-        with engine.connect() as conn:
-            conn.execute(text(
-                "ALTER TABLE students ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
-            ))
-            conn.commit()
-    except Exception:
-        pass  # Column already exists or SQLite (no IF NOT EXISTS needed)
+    _migrations = [
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS is_verified BOOLEAN NOT NULL DEFAULT 1",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS verification_token VARCHAR(512)",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS notify_burnout_alert BOOLEAN NOT NULL DEFAULT 1",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS notify_weekly_summary BOOLEAN NOT NULL DEFAULT 1",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS theme_preference VARCHAR(10) NOT NULL DEFAULT 'system'",
+    ]
+    for _sql in _migrations:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(_sql))
+                conn.commit()
+        except Exception:
+            pass  # Column already exists or DB dialect doesn't support IF NOT EXISTS
     yield
 
 
@@ -35,6 +47,9 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

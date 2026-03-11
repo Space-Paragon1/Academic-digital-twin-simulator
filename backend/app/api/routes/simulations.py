@@ -44,6 +44,22 @@ def run_simulation(config: ScenarioConfig, db: Session = Depends(get_db)):
     run = crud.create_simulation_run(db, config.student_id, config, result)
     result.id = run.id
     result.created_at = run.created_at
+
+    # Send burnout alert email if risk is HIGH, student wants it, and has email + password
+    _want_alert = getattr(student, "notify_burnout_alert", True)
+    if result.summary.burnout_risk == "HIGH" and student.email and student.password_hash and _want_alert:
+        try:
+            import logging
+            from app.core.email import send_burnout_alert_email
+            send_burnout_alert_email(
+                to_email=student.email,
+                student_name=student.name,
+                burnout_probability=result.summary.burnout_probability,
+                scenario_name=config.scenario_name or f"Scenario #{run.id}",
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).warning("Burnout alert email failed: %s", exc)
+
     return result
 
 
