@@ -7,7 +7,11 @@ import { clsx } from "clsx";
 import { Moon, Sun, LogIn, LogOut, CheckCircle, AlertCircle } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { studentsApi } from "@/lib/api";
+import { studentsApi, simulationsApi } from "@/lib/api";
+import { NotificationBell } from "@/components/ui/NotificationBell";
+import type { SimulationResult } from "@/lib/types";
+
+const STUDENT_ID_KEY = "adt_student_id";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
@@ -27,11 +31,21 @@ export function Navbar() {
   const { theme, toggle } = useTheme();
   const { user, logout } = useAuth();
   const [isVerified, setIsVerified] = useState<boolean | null>(null);
+  const [navStudentId, setNavStudentId] = useState<number>(0);
+  const [navSimulations, setNavSimulations] = useState<SimulationResult[]>([]);
 
   useEffect(() => {
     if (!user) { setIsVerified(null); return; }
     studentsApi.get(user.studentId).then((s) => setIsVerified(s.is_verified ?? true)).catch(() => {});
   }, [user]);
+
+  // Load student id + simulations for notification bell
+  useEffect(() => {
+    const sid = parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
+    if (!sid) return;
+    setNavStudentId(sid);
+    simulationsApi.history(sid).then(setNavSimulations).catch(() => {});
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-sm">
@@ -79,6 +93,11 @@ export function Navbar() {
 
         {/* Right side controls */}
         <div className="hidden sm:flex items-center gap-1">
+          {/* Notification bell */}
+          {navStudentId > 0 && (
+            <NotificationBell studentId={navStudentId} simulations={navSimulations} />
+          )}
+
           {/* Dark mode toggle */}
           <button
             type="button"

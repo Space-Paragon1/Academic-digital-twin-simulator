@@ -7,6 +7,7 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { ToastProvider } from "@/components/ui/Toaster";
 import { OnboardingModal } from "@/components/ui/OnboardingModal";
 import { OfflineBanner } from "@/components/ui/OfflineBanner";
+import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ServiceWorkerRegistrar } from "@/components/ui/ServiceWorkerRegistrar";
@@ -18,8 +19,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Academic Digital Twin",
-  description: "A simulation engine that models your academic life to predict GPA, burnout risk, and optimal schedules.",
+  title: "Academic Digital Twin Simulator",
+  description: "Predict your GPA, simulate burnout risk, and optimize your academic schedule with AI.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -29,6 +30,17 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
     "theme-color": "#6366f1",
+  },
+  openGraph: {
+    type: "website",
+    title: "Academic Digital Twin Simulator",
+    description: "Predict your GPA, simulate burnout risk, and optimize your academic schedule with AI.",
+    siteName: "Academic Digital Twin Simulator",
+  },
+  twitter: {
+    card: "summary",
+    title: "Academic Digital Twin Simulator",
+    description: "Predict your GPA, simulate burnout risk, and optimize your academic schedule with AI.",
   },
 };
 
@@ -48,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
             <MobileBottomNav />
             <OnboardingModal />
+            <PWAInstallPrompt />
           </ToastProvider>
           </AuthProvider>
         </ThemeProvider>

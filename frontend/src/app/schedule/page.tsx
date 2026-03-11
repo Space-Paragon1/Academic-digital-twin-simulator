@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { simulationsApi, coursesApi } from "@/lib/api";
 import type { SimulationResult, Course } from "@/lib/types";
@@ -125,13 +126,76 @@ export default function SchedulePage() {
     return { course: c, totalHours: dayHours, colorIdx: i % COURSE_COLORS.length };
   });
 
+  function exportIcal() {
+    // Generate a .ics file with one VEVENT per day per course block, starting next Monday at 07:00
+    const nextMonday = new Date();
+    const dayOfWeek = nextMonday.getDay(); // 0=Sun
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : 8 - dayOfWeek;
+    nextMonday.setDate(nextMonday.getDate() + daysUntilMonday);
+    nextMonday.setHours(0, 0, 0, 0);
+
+    function pad(n: number) { return String(n).padStart(2, "0"); }
+    function toIcsDate(d: Date) {
+      return (
+        `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}` +
+        `T${pad(d.getHours())}${pad(d.getMinutes())}00`
+      );
+    }
+
+    const lines: string[] = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Academic Digital Twin//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+    ];
+
+    schedule.forEach((dayBlocks, dIdx) => {
+      if (dayBlocks.length === 0) return;
+      let startHour = 7; // 07:00 AM
+      dayBlocks.forEach((block) => {
+        const eventDate = new Date(nextMonday);
+        eventDate.setDate(nextMonday.getDate() + dIdx);
+        eventDate.setHours(startHour, 0, 0, 0);
+        const durationMins = Math.round(block.hours * 60);
+        const endDate = new Date(eventDate.getTime() + durationMins * 60_000);
+        const uid = `adt-${dIdx}-${block.courseName.replace(/\s+/g, "-")}-${Date.now()}@academic-twin`;
+        lines.push(
+          "BEGIN:VEVENT",
+          `UID:${uid}`,
+          `DTSTART:${toIcsDate(eventDate)}`,
+          `DTEND:${toIcsDate(endDate)}`,
+          `SUMMARY:Study: ${block.courseName}`,
+          `DESCRIPTION:${block.hours.toFixed(1)}h study session for ${block.courseName}`,
+          "END:VEVENT",
+        );
+        startHour += Math.ceil(block.hours) + 0.25; // small gap between sessions
+      });
+    });
+
+    lines.push("END:VCALENDAR");
+    const icsContent = lines.join("\r\n");
+    const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "study-schedule.ics";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Weekly Study Schedule</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-          Based on your latest simulation — {totalHoursPerWeek.toFixed(1)}h/week needed, distributed by course difficulty and credits.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Weekly Study Schedule</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Based on your latest simulation — {totalHoursPerWeek.toFixed(1)}h/week needed, distributed by course difficulty and credits.
+          </p>
+        </div>
+        <Button variant="secondary" size="sm" onClick={exportIcal}>
+          Export to Calendar (.ics)
+        </Button>
       </div>
 
       {/* Summary stats */}

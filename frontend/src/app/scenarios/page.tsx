@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { ScenarioBuilder } from "@/components/forms/ScenarioBuilder";
 import { WhatIfPanel } from "@/components/ui/WhatIfPanel";
+import { BurnoutRecoveryPlanner } from "@/components/ui/BurnoutRecoveryPlanner";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useStudent } from "@/hooks/useStudent";
 import { useScenario } from "@/hooks/useScenario";
@@ -152,6 +153,15 @@ export default function ScenariosPage() {
             baseBurnout={result.summary.burnout_probability * 100}
             baseSleep={result.scenario_config.sleep_target_hours}
             baseWork={result.scenario_config.work_hours_per_week}
+          />
+        )}
+
+        {/* Burnout Recovery Planner — shown when latest result is HIGH risk */}
+        {result && result.summary.burnout_risk === "HIGH" && (
+          <BurnoutRecoveryPlanner
+            burnoutProbability={result.summary.burnout_probability}
+            currentWork={result.scenario_config.work_hours_per_week}
+            currentSleep={result.scenario_config.sleep_target_hours}
           />
         )}
 

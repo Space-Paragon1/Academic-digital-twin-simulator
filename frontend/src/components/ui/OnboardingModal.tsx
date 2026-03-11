@@ -9,43 +9,34 @@ const STUDENT_ID_KEY = "adt_student_id";
 
 const STEPS = [
   {
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-brand-600" aria-hidden="true">
-        <path d="M12 3L3 8v8l9 5 9-5V8L12 3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/>
-        <path d="M12 12v9M3 8l9 4 9-4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeOpacity="0.6"/>
-      </svg>
-    ),
+    emoji: "🎓",
     title: "Welcome to Academic Digital Twin",
-    body: "This simulator models your academic life as a dynamic system — predicting your GPA, burnout risk, and cognitive load week-by-week so you can plan smarter.",
+    description:
+      "This simulator models your academic life as a dynamic system — predicting your GPA, burnout risk, and cognitive load week-by-week so you can plan smarter.",
   },
   {
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-brand-600" aria-hidden="true">
-        <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8"/>
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-      </svg>
-    ),
+    emoji: "👤",
     title: "Step 1 — Create Your Profile",
-    body: "Go to Profile to set your name, target GPA, and sleep/work preferences. Then add your courses — or import them from Canvas LMS with one click.",
+    description:
+      "Go to Profile to set your name, target GPA, and sleep/work preferences. Then add your courses — or import them from Canvas LMS with one click.",
   },
   {
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-brand-600" aria-hidden="true">
-        <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
+    emoji: "🧪",
     title: "Step 2 — Run a Scenario",
-    body: "Head to Scenarios and configure a simulation: semester length, study strategy (spaced, mixed, cramming), work hours, sleep, and exam weeks. Hit Run.",
+    description:
+      "Head to Scenarios and configure a simulation: semester length, study strategy (spaced, mixed, cramming), work hours, sleep, and exam weeks. Hit Run.",
   },
   {
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8 text-brand-600" aria-hidden="true">
-        <path d="M3 12l9-9 9 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    ),
-    title: "Step 3 — Analyse & Optimise",
-    body: "Your Dashboard shows live GPA trajectory, burnout gauge, and goal progress. Use the Optimizer to find the best schedule, and the AI Advisor to ask questions in plain English.",
+    emoji: "🤖",
+    title: "Step 3 — Ask the AI Advisor",
+    description:
+      "Your AI Advisor can answer questions like "What if I drop a course?" or "How can I raise my GPA by 0.3?". It uses your simulation data to give personalised advice.",
+  },
+  {
+    emoji: "🚀",
+    title: "You're all set!",
+    description:
+      "Your Dashboard shows live GPA trajectory, burnout gauge, and goal progress. Use the Optimizer to find the best schedule. Let's get started!",
   },
 ];
 
@@ -57,7 +48,6 @@ export function OnboardingModal() {
     const done = localStorage.getItem(ONBOARDING_KEY);
     const hasStudent = !!parseInt(localStorage.getItem(STUDENT_ID_KEY) ?? "0");
     if (!done && !hasStudent) {
-      // Small delay so the page layout settles first
       const t = setTimeout(() => setVisible(true), 600);
       return () => clearTimeout(t);
     }
@@ -107,9 +97,9 @@ export function OnboardingModal() {
           ))}
         </div>
 
-        {/* Icon */}
-        <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-50 dark:bg-brand-900/20 mb-4">
-          {current.icon}
+        {/* Illustration emoji */}
+        <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-50 dark:bg-brand-900/20 mb-4 text-4xl">
+          {current.emoji}
         </div>
 
         {/* Content */}
@@ -117,11 +107,16 @@ export function OnboardingModal() {
           {current.title}
         </h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-          {current.body}
+          {current.description}
+        </p>
+
+        {/* Step indicator */}
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">
+          Step {step + 1} of {STEPS.length}
         </p>
 
         {/* Actions */}
-        <div className="flex items-center justify-between mt-6 gap-3">
+        <div className="flex items-center justify-between mt-5 gap-3">
           <button
             type="button"
             onClick={dismiss}
@@ -132,12 +127,12 @@ export function OnboardingModal() {
           <div className="flex gap-2">
             {step > 0 && (
               <Button variant="secondary" size="sm" onClick={() => setStep((s) => s - 1)}>
-                Back
+                Previous
               </Button>
             )}
             {isLast ? (
               <Link href="/profile" onClick={dismiss}>
-                <Button size="sm">Get Started</Button>
+                <Button size="sm">Done</Button>
               </Link>
             ) : (
               <Button size="sm" onClick={() => setStep((s) => s + 1)}>
