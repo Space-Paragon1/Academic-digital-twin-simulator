@@ -80,14 +80,14 @@ export default function SharePage() {
             sub={summary.burnout_risk}
           />
           <StatCard
-            label="Avg Cognitive Load"
-            value={summary.avg_cognitive_load?.toFixed(1) ?? "—"}
-            sub="out of 10"
+            label="Study Hours/Wk"
+            value={summary.required_study_hours_per_week.toFixed(1)}
+            sub="required"
           />
           <StatCard
-            label="Avg Retention"
-            value={summary.avg_retention_score !== undefined ? `${(summary.avg_retention_score * 100).toFixed(0)}%` : "—"}
-            sub="knowledge retained"
+            label="Sleep Deficit"
+            value={summary.sleep_deficit_hours.toFixed(1)}
+            sub="hours/week"
           />
         </div>
 
