@@ -140,6 +140,16 @@ export const optimizationApi = {
       .then((r) => r.data),
 };
 
+// ── Password reset ────────────────────────────────────────────────────────────
+
+export const passwordApi = {
+  forgotPassword: (email: string) =>
+    api.post<{ message: string }>("/api/v1/auth/forgot-password", { email }).then((r) => r.data),
+
+  resetPassword: (token: string, new_password: string) =>
+    api.post<{ message: string }>("/api/v1/auth/reset-password", { token, new_password }).then((r) => r.data),
+};
+
 // ── Advisor ───────────────────────────────────────────────────────────────────
 
 export const advisorApi = {

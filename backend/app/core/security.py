@@ -23,6 +23,7 @@ from jose import JWTError, jwt
 from app.core.config import get_settings
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+RESET_TOKEN_EXPIRE_MINUTES = 15            # short-lived reset tokens
 
 
 def _prepare(plain: str) -> bytes:
@@ -50,5 +51,24 @@ def decode_token(token: str) -> Optional[dict]:
     """Returns payload dict or None if token is invalid or expired."""
     try:
         return jwt.decode(token, get_settings().SECRET_KEY, algorithms=["HS256"])
+    except JWTError:
+        return None
+
+
+def create_reset_token(email: str) -> str:
+    """Create a short-lived (15 min) JWT for password reset."""
+    settings = get_settings()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    payload = {"sub": email, "type": "password_reset", "exp": expire}
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+
+def decode_reset_token(token: str) -> Optional[str]:
+    """Verify a password-reset JWT. Returns the email on success, None otherwise."""
+    try:
+        payload = jwt.decode(token, get_settings().SECRET_KEY, algorithms=["HS256"])
+        if payload.get("type") != "password_reset":
+            return None
+        return payload.get("sub")  # the email
     except JWTError:
         return None

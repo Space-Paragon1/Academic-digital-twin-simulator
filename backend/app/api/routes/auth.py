@@ -9,7 +9,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    create_reset_token,
+    decode_reset_token,
+    hash_password,
+    verify_password,
+)
 from app.db.database import get_db
 from app.db import crud
 from app.models.student import Student
@@ -39,6 +45,15 @@ class AuthResponse(BaseModel):
     student_id: int
     name: str
     email: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -93,6 +108,60 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         name=student.name,
         email=student.email,
     )
+
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Send a password-reset email.
+
+    Always returns 200 regardless of whether the email exists (prevents
+    user-enumeration attacks). If SMTP is not configured the error is logged
+    server-side but the client still receives 200.
+    """
+    from app.core.config import get_settings
+    from app.core.email import send_password_reset_email
+    import logging
+
+    logger = logging.getLogger(__name__)
+    student = crud.get_student_by_email(db, req.email)
+    if student and student.password_hash:
+        try:
+            settings = get_settings()
+            token = create_reset_token(req.email)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+            send_password_reset_email(req.email, reset_url)
+        except Exception as exc:
+            logger.error("Failed to send reset email to %s: %s", req.email, exc)
+
+    return {"message": "If that email is registered, a reset link has been sent."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Verify the reset token and update the password."""
+    if len(req.new_password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 6 characters.",
+        )
+
+    email = decode_reset_token(req.token)
+    if not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset link is invalid or has expired. Please request a new one.",
+        )
+
+    student = crud.get_student_by_email(db, email)
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Account not found.",
+        )
+
+    student.password_hash = hash_password(req.new_password)
+    db.commit()
+    return {"message": "Password updated successfully. You can now sign in."}
 
 
 @router.get("/me", response_model=AuthResponse)
