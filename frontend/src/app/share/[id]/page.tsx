@@ -72,7 +72,7 @@ export default function SharePage() {
           <StatCard
             label="Predicted GPA"
             value={summary.predicted_gpa_mean.toFixed(2)}
-            sub={`± ${summary.predicted_gpa_std?.toFixed(2) ?? "—"}`}
+            sub={summary.predicted_gpa_min !== undefined ? `${summary.predicted_gpa_min.toFixed(2)}–${summary.predicted_gpa_max.toFixed(2)}` : undefined}
           />
           <StatCard
             label="Burnout Risk"
