@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/Button";
-import type { Metadata } from "next";
 
 type Mode = "login" | "register";
 
@@ -116,9 +115,16 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                Password
+              </label>
+              {mode === "login" && (
+                <Link href="/forgot-password" className="text-xs text-brand-600 hover:underline">
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <input
               type="password"
               required
