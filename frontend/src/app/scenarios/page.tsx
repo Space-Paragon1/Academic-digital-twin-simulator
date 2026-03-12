@@ -10,6 +10,8 @@ import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { ScenarioBuilder } from "@/components/forms/ScenarioBuilder";
 import { WhatIfPanel } from "@/components/ui/WhatIfPanel";
 import { BurnoutRecoveryPlanner } from "@/components/ui/BurnoutRecoveryPlanner";
+import { CourseLoadAdvisor } from "@/components/ui/CourseLoadAdvisor";
+import { SimulationReplay } from "@/components/ui/SimulationReplay";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useStudent } from "@/hooks/useStudent";
 import { useScenario } from "@/hooks/useScenario";
@@ -78,6 +80,15 @@ export default function ScenariosPage() {
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       {/* Builder panel */}
       <div className="lg:col-span-1">
+        {/* Course Load Advisor */}
+        {courses.length > 0 && (
+          <CourseLoadAdvisor
+            totalCredits={courses.reduce((a, c) => a + c.credits, 0)}
+            workHours={result?.scenario_config.work_hours_per_week ?? student.weekly_work_hours}
+            sleepHours={result?.scenario_config.sleep_target_hours ?? student.sleep_target_hours}
+            numCourses={courses.length}
+          />
+        )}
         <Card
           title={rerunConfig ? "Tweak & Re-run" : "New Scenario"}
           subtitle={rerunConfig ? "Pre-filled from previous scenario — adjust and run" : "Configure and run a simulation"}
@@ -144,6 +155,11 @@ export default function ScenariosPage() {
               <Button size="sm" variant="secondary" className="mt-3">View Full Report</Button>
             </Link>
           </div>
+        )}
+
+        {/* Simulation Replay */}
+        {result && !simLoading && result.weekly_snapshots.length > 0 && (
+          <SimulationReplay snapshots={result.weekly_snapshots} />
         )}
 
         {/* What-if panel — shows once there's at least one result */}

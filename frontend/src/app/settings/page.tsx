@@ -6,9 +6,59 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { passwordApi, accountApi, emailVerificationApi, studentsApi } from "@/lib/api";
+import { passwordApi, accountApi, emailVerificationApi, studentsApi, simulationsApi } from "@/lib/api";
 import { useToast } from "@/components/ui/Toaster";
 import type { Student } from "@/lib/types";
+
+function DeleteSimsButton({ studentId }: { studentId: number }) {
+  const toast = useToast();
+  const [confirming, setConfirming] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+
+  async function handleDelete() {
+    setConfirming(false);
+    try {
+      const sims = await simulationsApi.history(studentId);
+      if (sims.length === 0) { toast.info("No simulations to delete."); return; }
+      setProgress(`Deleting ${sims.length} simulations…`);
+      for (const sim of sims) {
+        if (sim.id) await simulationsApi.delete(sim.id);
+      }
+      setProgress(null);
+      toast.success("All simulations deleted.");
+    } catch (err: unknown) {
+      setProgress(null);
+      toast.error(err instanceof Error ? err.message : "Failed to delete simulations.");
+    }
+  }
+
+  if (progress) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">{progress}</p>;
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-2">
+        <p className="text-sm text-red-600 dark:text-red-400">Are you sure? This cannot be undone.</p>
+        <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30" onClick={handleDelete}>
+          Yes, delete all
+        </Button>
+        <Button variant="secondary" size="sm" onClick={() => setConfirming(false)}>Cancel</Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
+      onClick={() => setConfirming(true)}
+    >
+      Delete All Simulations
+    </Button>
+  );
+}
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -365,6 +415,56 @@ export default function SettingsPage() {
             Update Password
           </Button>
         </form>
+      </Card>
+
+      {/* Data & Privacy */}
+      <Card title="Data &amp; Privacy">
+        <div className="space-y-4">
+          <div>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Export All My Data</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              Downloads a JSON file containing your student profile and all simulation history.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                if (!user) return;
+                try {
+                  const [profile, simulations] = await Promise.all([
+                    studentsApi.get(user.studentId),
+                    simulationsApi.history(user.studentId),
+                  ]);
+                  const blob = new Blob(
+                    [JSON.stringify({ student: profile, simulations, exported_at: new Date().toISOString() }, null, 2)],
+                    { type: "application/json" }
+                  );
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `academic-twin-data-${new Date().toISOString().split("T")[0]}.json`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success("Data exported successfully.");
+                } catch (err: unknown) {
+                  toast.error(err instanceof Error ? err.message : "Export failed.");
+                }
+              }}
+            >
+              Export All My Data
+            </Button>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">Delete All Simulations</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+              Permanently removes all your simulation runs. Your profile and courses are kept.
+            </p>
+            {!user ? null : (
+              <DeleteSimsButton studentId={user.studentId} />
+            )}
+          </div>
+        </div>
       </Card>
 
       {/* Danger zone */}

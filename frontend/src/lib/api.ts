@@ -186,3 +186,33 @@ export const advisorApi = {
       .post<GoalTargetResult>("/api/v1/advisor/goal-target", request, { timeout: 90_000 })
       .then((r) => r.data),
 };
+
+// ── Leaderboard ───────────────────────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  rank: number;
+  gpa_mean: number;
+  burnout_risk: string;
+  strategy: string;
+  week_count: number;
+}
+
+export const leaderboardApi = {
+  get: () =>
+    api
+      .get<LeaderboardEntry[]>("/api/v1/simulations/leaderboard")
+      .then((r) => r.data),
+};
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
+
+export const feedbackApi = {
+  submit: (message: string, page: string, studentId: number | null) =>
+    api
+      .post<{ received: boolean }>("/api/v1/students/feedback", {
+        message,
+        page,
+        student_id: studentId,
+      })
+      .then((r) => r.data),
+};

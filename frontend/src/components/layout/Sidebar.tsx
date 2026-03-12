@@ -17,6 +17,9 @@ import {
   GraduationCap,
   CalendarRange,
   Link2,
+  Trophy,
+  Timer,
+  Calculator,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -31,8 +34,11 @@ const navItems: { href: string; label: string; Icon: LucideIcon; description: st
   { href: "/compare",   label: "Compare",        Icon: GitCompare,      description: "Side-by-side"      },
   { href: "/optimizer", label: "Optimizer",      Icon: Sparkles,        description: "Best schedule"     },
   { href: "/advisor",   label: "Advisor",        Icon: BrainCircuit,    description: "AI + Goal targeting"},
-  { href: "/canvas",    label: "Canvas Import",  Icon: Link2,           description: "Import from LMS"   },
-  { href: "/settings",  label: "Settings",       Icon: Settings,        description: "Account & security" },
+  { href: "/canvas",      label: "Canvas Import",  Icon: Link2,        description: "Import from LMS"    },
+  { href: "/leaderboard", label: "Leaderboard",    Icon: Trophy,       description: "Top students"       },
+  { href: "/timer",       label: "Timer",          Icon: Timer,        description: "Pomodoro sessions"  },
+  { href: "/gpa-calc",    label: "GPA Calc",       Icon: Calculator,   description: "Calculate GPA"      },
+  { href: "/settings",    label: "Settings",       Icon: Settings,     description: "Account & security" },
 ];
 
 export function Sidebar() {

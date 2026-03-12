@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -17,6 +18,14 @@ from app.simulation.monte_carlo import run_monte_carlo
 
 router = APIRouter(prefix="/simulations", tags=["simulations"])
 engine = SimulationEngine()
+
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    gpa_mean: float
+    burnout_risk: str
+    strategy: str
+    week_count: int
 
 
 @router.post("/run", response_model=SimulationResult, status_code=status.HTTP_201_CREATED)
@@ -87,6 +96,57 @@ def run_monte_carlo_endpoint(request: MonteCarloRequest, db: Session = Depends(g
         return run_monte_carlo(request=request, courses=courses, student=student)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get("/leaderboard", response_model=list[LeaderboardEntry])
+def get_leaderboard(db: Session = Depends(get_db)):
+    """
+    Return top 10 anonymous leaderboard entries.
+    Each entry is the best simulation per student ordered by GPA descending.
+    """
+    from app.models.simulation import SimulationRun
+
+    # Get all simulation runs
+    all_runs = db.query(SimulationRun).all()
+
+    # Best sim per student (max predicted_gpa_mean)
+    best_per_student: dict[int, SimulationRun] = {}
+    for run in all_runs:
+        if not run.results:
+            continue
+        try:
+            gpa = run.results["summary"]["predicted_gpa_mean"]
+        except (KeyError, TypeError):
+            continue
+        prev = best_per_student.get(run.student_id)
+        if prev is None:
+            best_per_student[run.student_id] = run
+        else:
+            prev_gpa = prev.results["summary"]["predicted_gpa_mean"]
+            if gpa > prev_gpa:
+                best_per_student[run.student_id] = run
+
+    # Sort by GPA desc, take top 10
+    sorted_runs = sorted(
+        best_per_student.values(),
+        key=lambda r: r.results["summary"]["predicted_gpa_mean"],
+        reverse=True,
+    )[:10]
+
+    entries = []
+    for rank, run in enumerate(sorted_runs, start=1):
+        summary = run.results["summary"]
+        config = run.results.get("scenario_config", {})
+        entries.append(
+            LeaderboardEntry(
+                rank=rank,
+                gpa_mean=round(summary["predicted_gpa_mean"], 2),
+                burnout_risk=summary.get("burnout_risk", "UNKNOWN"),
+                strategy=config.get("study_strategy", "unknown"),
+                week_count=config.get("num_weeks", 0),
+            )
+        )
+    return entries
 
 
 @router.get("/{sim_id}", response_model=SimulationResult)

@@ -360,3 +360,55 @@ def send_weekly_summary_email(
         "subject": f"Your Academic Twin weekly summary — Best GPA: {best_gpa:.2f}",
         "html": html_body,
     })
+
+
+def send_feedback_email(message: str, page: str, student_id: int | None) -> None:
+    """Send user feedback to the admin (RESEND_FROM address)."""
+    settings = get_settings()
+    if not settings.RESEND_API_KEY:
+        raise RuntimeError("Email is not configured. Set RESEND_API_KEY in your environment.")
+
+    resend.api_key = settings.RESEND_API_KEY
+    sid_str = str(student_id) if student_id is not None else "anonymous"
+
+    html_body = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:Inter,system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:40px 0;">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0"
+             style="background:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;">
+        <tr>
+          <td style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:24px 40px;text-align:center;">
+            <span style="color:#ffffff;font-size:16px;font-weight:700;">User Feedback</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:32px 40px;">
+            <p style="margin:0 0 8px;color:#64748b;font-size:13px;"><strong>Page:</strong> {page}</p>
+            <p style="margin:0 0 16px;color:#64748b;font-size:13px;"><strong>Student ID:</strong> {sid_str}</p>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px 20px;">
+              <p style="margin:0;font-size:14px;color:#0f172a;line-height:1.6;">{message}</p>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 40px;background:#f8fafc;border-top:1px solid #f1f5f9;text-align:center;">
+            <p style="margin:0;color:#cbd5e1;font-size:12px;">&copy; 2026 Academic Digital Twin</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+"""
+
+    resend.Emails.send({
+        "from": settings.RESEND_FROM,
+        "to": [settings.RESEND_FROM],
+        "subject": f"[Feedback] from student {sid_str} on {page}",
+        "html": html_body,
+    })

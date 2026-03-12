@@ -11,6 +11,8 @@ import { PWAInstallPrompt } from "@/components/ui/PWAInstallPrompt";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ServiceWorkerRegistrar } from "@/components/ui/ServiceWorkerRegistrar";
+import { KeyboardShortcuts } from "@/components/ui/KeyboardShortcuts";
+import { FeedbackButton } from "@/components/ui/FeedbackButton";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -61,6 +63,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <MobileBottomNav />
             <OnboardingModal />
             <PWAInstallPrompt />
+            <KeyboardShortcuts />
+            <FeedbackButton />
           </ToastProvider>
           </AuthProvider>
         </ThemeProvider>
