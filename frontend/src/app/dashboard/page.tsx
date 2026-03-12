@@ -20,6 +20,7 @@ import { PerformanceTrajectory } from "@/components/charts/PerformanceTrajectory
 import { BurnoutRiskGauge } from "@/components/charts/BurnoutRiskGauge";
 import { TimeAllocationChart } from "@/components/charts/TimeAllocationChart";
 import { CourseGradesChart } from "@/components/charts/CourseGradesChart";
+import { AchievementBadges } from "@/components/ui/AchievementBadges";
 import { simulationsApi, studentsApi, accountApi, monteCarloApi } from "@/lib/api";
 import { useToast } from "@/components/ui/Toaster";
 import type { MonteCarloResult, SimulationResult } from "@/lib/types";
@@ -388,6 +389,16 @@ export default function DashboardPage() {
           </Card>
         );
       })()}
+
+      {/* Achievement Badges */}
+      {studentId > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">
+            Achievements
+          </p>
+          <AchievementBadges simulations={allResults} studentId={studentId} />
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

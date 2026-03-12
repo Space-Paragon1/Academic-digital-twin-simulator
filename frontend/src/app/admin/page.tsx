@@ -7,6 +7,17 @@ import { BurnoutBadge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { studentsApi, simulationsApi } from "@/lib/api";
 import type { SimulationResult, Student } from "@/lib/types";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+} from "recharts";
 
 const SESSION_KEY = "adt_admin_unlocked";
 const ADMIN_PIN   = "admin1234";
@@ -241,6 +252,95 @@ export default function AdminPage() {
           </Card>
         </div>
       )}
+
+      {/* Analytics section */}
+      {!loading && rows.length > 0 && (() => {
+        const withSim = rows.filter((r) => r.latestSim);
+
+        // GPA distribution
+        const gpaBuckets = [
+          { label: "< 2.0",    min: 0,   max: 2.0 },
+          { label: "2.0–2.5",  min: 2.0, max: 2.5 },
+          { label: "2.5–3.0",  min: 2.5, max: 3.0 },
+          { label: "3.0–3.5",  min: 3.0, max: 3.5 },
+          { label: "3.5–4.0",  min: 3.5, max: 4.01 },
+        ].map((b) => ({
+          ...b,
+          count: withSim.filter((r) => {
+            const g = r.latestSim!.summary.predicted_gpa_mean;
+            return g >= b.min && g < b.max;
+          }).length,
+        }));
+
+        // Burnout distribution
+        const burnoutData = [
+          { name: "LOW",    value: withSim.filter((r) => r.latestSim!.summary.burnout_risk === "LOW").length,    color: "#10b981" },
+          { name: "MEDIUM", value: withSim.filter((r) => r.latestSim!.summary.burnout_risk === "MEDIUM").length, color: "#f59e0b" },
+          { name: "HIGH",   value: withSim.filter((r) => r.latestSim!.summary.burnout_risk === "HIGH").length,   color: "#ef4444" },
+        ].filter((d) => d.value > 0);
+
+        // Strategy distribution
+        const strategyData = (["spaced", "mixed", "cramming"] as const).map((name) => ({
+          name,
+          count: withSim.filter((r) => r.latestSim!.scenario_config.study_strategy === name).length,
+        }));
+
+        return (
+          <div className="space-y-4">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Analytics</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <Card title="GPA Distribution">
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={gpaBuckets} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: number) => [v, "Students"]} />
+                    <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+
+              <Card title="Burnout Risk">
+                {burnoutData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie
+                        data={burnoutData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={65}
+                        dataKey="value"
+                        label={({ name, value }: { name: string; value: number }) => `${name}: ${value}`}
+                        labelLine={false}
+                      >
+                        {burnoutData.map((entry, i) => (
+                          <Cell key={i} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: number) => [v, "Students"]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-[180px] items-center justify-center">
+                    <p className="text-slate-400 text-sm">No data</p>
+                  </div>
+                )}
+              </Card>
+
+              <Card title="Study Strategies">
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={strategyData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
+                    <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} formatter={(v: number) => [v, "Students"]} />
+                    <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
