@@ -1,4 +1,8 @@
+import logging
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
@@ -6,6 +10,14 @@ from app.db import crud
 from app.schemas.student import StudentCreate, StudentOut, StudentUpdate
 
 router = APIRouter(prefix="/students", tags=["students"])
+
+_log = logging.getLogger(__name__)
+
+
+class FeedbackPayload(BaseModel):
+    message: str
+    page: str
+    student_id: Optional[int] = None
 
 
 @router.get("/", response_model=list[StudentOut])
@@ -91,3 +103,24 @@ def send_summary(student_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
     return {"message": "Summary email sent."}
+
+
+@router.post("/feedback", status_code=status.HTTP_200_OK)
+def submit_feedback(payload: FeedbackPayload):
+    """Log user feedback and optionally send it to the admin via email."""
+    _log.info(
+        "Feedback: page=%s student_id=%s message=%s",
+        payload.page,
+        payload.student_id,
+        payload.message,
+    )
+    try:
+        from app.core.email import send_feedback_email
+        send_feedback_email(
+            message=payload.message,
+            page=payload.page,
+            student_id=payload.student_id,
+        )
+    except Exception as exc:
+        _log.warning("Feedback email failed (non-fatal): %s", exc)
+    return {"received": True}

@@ -13,6 +13,33 @@ import type { SimulationResult } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
 
+function computeStreak(results: SimulationResult[]): number {
+  if (results.length === 0) return 0;
+  const dateSet = new Set(
+    results.filter((r) => r.created_at).map((r) => new Date(r.created_at!).toDateString())
+  );
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    if (dateSet.has(d.toDateString())) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function NavStatsPill({ simulations }: { simulations: SimulationResult[] }) {
+  const streak = computeStreak(simulations);
+  return (
+    <span className="hidden md:inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+      {streak > 0 && <span>🔥 {streak}</span>}
+      {streak > 0 && <span className="text-slate-300 dark:text-slate-600">·</span>}
+      <span>{simulations.length} sims</span>
+    </span>
+  );
+}
+
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/profile",   label: "Profile"   },
@@ -120,6 +147,9 @@ export function Navbar() {
                   <span title="Email not verified"><AlertCircle size={12} className="inline text-amber-500 shrink-0" /></span>
                 )}
               </span>
+              {navStudentId > 0 && navSimulations.length > 0 && (
+                <NavStatsPill simulations={navSimulations} />
+              )}
               <button
                 type="button"
                 onClick={logout}
