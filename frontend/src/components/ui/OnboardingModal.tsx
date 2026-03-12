@@ -30,7 +30,7 @@ const STEPS = [
     emoji: "🤖",
     title: "Step 3 — Ask the AI Advisor",
     description:
-      "Your AI Advisor can answer questions like "What if I drop a course?" or "How can I raise my GPA by 0.3?". It uses your simulation data to give personalised advice.",
+      "Your AI Advisor can answer questions like \"What if I drop a course?\" or \"How can I raise my GPA by 0.3?\". It uses your simulation data to give personalised advice.",
   },
   {
     emoji: "🚀",
