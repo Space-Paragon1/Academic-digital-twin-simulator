@@ -204,6 +204,34 @@ export const leaderboardApi = {
       .then((r) => r.data),
 };
 
+// ── Simulation Notes ──────────────────────────────────────────────────────────
+
+export const notesApi = {
+  save: (simId: number, note: string) =>
+    api
+      .post<{ note: string | null }>(`/api/v1/simulations/${simId}/note`, { note })
+      .then((r) => r.data),
+
+  get: (simId: number) =>
+    api
+      .get<{ note: string | null }>(`/api/v1/simulations/${simId}/note`)
+      .then((r) => r.data),
+};
+
+// ── Simulation Tags ────────────────────────────────────────────────────────────
+
+export const tagsApi = {
+  save: (simId: number, tags: string[]) =>
+    api
+      .post<{ tags: string[] }>(`/api/v1/simulations/${simId}/tags`, { tags })
+      .then((r) => r.data),
+
+  get: (simId: number) =>
+    api
+      .get<{ tags: string[] }>(`/api/v1/simulations/${simId}/tags`)
+      .then((r) => r.data),
+};
+
 // ── Feedback ──────────────────────────────────────────────────────────────────
 
 export const feedbackApi = {

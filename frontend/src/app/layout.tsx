@@ -13,6 +13,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ServiceWorkerRegistrar } from "@/components/ui/ServiceWorkerRegistrar";
 import { KeyboardShortcuts } from "@/components/ui/KeyboardShortcuts";
 import { FeedbackButton } from "@/components/ui/FeedbackButton";
+import { CommandPalette } from "@/components/ui/CommandPalette";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -65,6 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PWAInstallPrompt />
             <KeyboardShortcuts />
             <FeedbackButton />
+            <CommandPalette />
           </ToastProvider>
           </AuthProvider>
         </ThemeProvider>

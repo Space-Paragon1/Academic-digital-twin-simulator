@@ -20,6 +20,8 @@ import {
   Trophy,
   Timer,
   Calculator,
+  FileText,
+  Heart,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -38,6 +40,8 @@ const navItems: { href: string; label: string; Icon: LucideIcon; description: st
   { href: "/leaderboard", label: "Leaderboard",    Icon: Trophy,       description: "Top students"       },
   { href: "/timer",       label: "Timer",          Icon: Timer,        description: "Pomodoro sessions"  },
   { href: "/gpa-calc",    label: "GPA Calc",       Icon: Calculator,   description: "Calculate GPA"      },
+  { href: "/report",      label: "Report",         Icon: FileText,     description: "Print progress"     },
+  { href: "/wellness",    label: "Wellness",       Icon: Heart,        description: "Mood & energy log"  },
   { href: "/settings",    label: "Settings",       Icon: Settings,     description: "Account & security" },
 ];
 

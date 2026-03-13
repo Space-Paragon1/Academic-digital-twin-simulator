@@ -182,6 +182,62 @@ def list_simulations(
     return results
 
 
+class NoteBody(BaseModel):
+    note: str
+
+
+class NoteResponse(BaseModel):
+    note: str | None
+
+
+class TagsBody(BaseModel):
+    tags: list[str]
+
+
+class TagsResponse(BaseModel):
+    tags: list[str]
+
+
+@router.post("/{sim_id}/note", response_model=NoteResponse)
+def save_note(sim_id: int, body: NoteBody, db: Session = Depends(get_db)):
+    """Save a text note to a simulation run."""
+    run = crud.get_simulation_run(db, sim_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+    crud.save_simulation_note(db, sim_id, body.note)
+    return NoteResponse(note=body.note)
+
+
+@router.get("/{sim_id}/note", response_model=NoteResponse)
+def get_note(sim_id: int, db: Session = Depends(get_db)):
+    """Retrieve a stored note for a simulation run."""
+    run = crud.get_simulation_run(db, sim_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+    note = crud.get_simulation_note(db, sim_id)
+    return NoteResponse(note=note)
+
+
+@router.post("/{sim_id}/tags", response_model=TagsResponse)
+def save_tags(sim_id: int, body: TagsBody, db: Session = Depends(get_db)):
+    """Save tags to a simulation run."""
+    run = crud.get_simulation_run(db, sim_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+    crud.save_simulation_tags(db, sim_id, body.tags)
+    return TagsResponse(tags=body.tags)
+
+
+@router.get("/{sim_id}/tags", response_model=TagsResponse)
+def get_tags(sim_id: int, db: Session = Depends(get_db)):
+    """Retrieve tags for a simulation run."""
+    run = crud.get_simulation_run(db, sim_id)
+    if not run:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
+    tags = crud.get_simulation_tags(db, sim_id)
+    return TagsResponse(tags=tags)
+
+
 @router.delete("/{sim_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_simulation(sim_id: int, db: Session = Depends(get_db)):
     """Delete a simulation run by ID."""
