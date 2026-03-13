@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { BurnoutBadge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
+import { ScenarioDiff } from "@/components/ui/ScenarioDiff";
 import { simulationsApi } from "@/lib/api";
 import type { SimulationResult } from "@/lib/types";
 
@@ -401,6 +402,12 @@ export default function ComparePage() {
               </Card>
             );
           })()}
+
+          {/* Scenario Diff Viewer */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Parameter Diff</h3>
+            <ScenarioDiff a={simA} b={simB} />
+          </div>
 
           {/* Recommendations */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

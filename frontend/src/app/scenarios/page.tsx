@@ -12,6 +12,7 @@ import { WhatIfPanel } from "@/components/ui/WhatIfPanel";
 import { BurnoutRecoveryPlanner } from "@/components/ui/BurnoutRecoveryPlanner";
 import { CourseLoadAdvisor } from "@/components/ui/CourseLoadAdvisor";
 import { SimulationReplay } from "@/components/ui/SimulationReplay";
+import { CourseDropSimulator } from "@/components/ui/CourseDropSimulator";
 import { useSimulation } from "@/hooks/useSimulation";
 import { useStudent } from "@/hooks/useStudent";
 import { useScenario } from "@/hooks/useScenario";
@@ -20,6 +21,7 @@ import type { ScenarioConfig } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
 const RERUN_KEY = "adt_rerun_config";
+const DROP_CONFIG_KEY = "adt_drop_config";
 
 export default function ScenariosPage() {
   const { student, courses, isLoading: studentLoading, loadStudent, loadCourses } = useStudent();
@@ -41,6 +43,12 @@ export default function ScenariosPage() {
     if (rerun) {
       try { setRerunConfig(JSON.parse(rerun)); } catch { /* ignore */ }
       sessionStorage.removeItem(RERUN_KEY);
+    }
+    // Pick up course-drop simulator config
+    const dropConfig = sessionStorage.getItem(DROP_CONFIG_KEY);
+    if (dropConfig) {
+      try { setRerunConfig(JSON.parse(dropConfig)); } catch { /* ignore */ }
+      sessionStorage.removeItem(DROP_CONFIG_KEY);
     }
   }, []);
 
@@ -160,6 +168,15 @@ export default function ScenariosPage() {
         {/* Simulation Replay */}
         {result && !simLoading && result.weekly_snapshots.length > 0 && (
           <SimulationReplay snapshots={result.weekly_snapshots} />
+        )}
+
+        {/* Course Drop Simulator */}
+        {student && courses.length > 0 && (
+          <CourseDropSimulator
+            courses={courses}
+            studentId={student.id}
+            latestConfig={result?.scenario_config ?? null}
+          />
         )}
 
         {/* What-if panel — shows once there's at least one result */}

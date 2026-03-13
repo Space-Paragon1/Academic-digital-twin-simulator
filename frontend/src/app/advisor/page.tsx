@@ -157,7 +157,7 @@ function AdvisorChat() {
         )}
       </div>
 
-      {/* Feature 8: Quick Course Advice pills */}
+      {/* Feature 8: Quick Course Advice pills + AI Scenario Suggestion */}
       {courses.length > 0 && (
         <div className="mb-3">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">Quick Course Advice</p>
@@ -177,6 +177,19 @@ function AdvisorChat() {
                 {c.name}
               </button>
             ))}
+            {/* AI Scenario Suggestion button */}
+            <button
+              type="button"
+              title="Ask AI to suggest an optimal scenario configuration"
+              onClick={() => {
+                const suggestionPrompt =
+                  "Based on my goals and simulation history, suggest the optimal scenario configuration for me. Include specific values for: study strategy, sleep hours, work hours per week, and number of exam weeks. Format your response as a clear recommendation.";
+                setInput(suggestionPrompt);
+              }}
+              className="rounded-full border border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/20 px-3 py-1 text-xs font-semibold text-purple-700 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+            >
+              ✨ Suggest a Scenario
+            </button>
           </div>
         </div>
       )}

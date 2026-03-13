@@ -150,3 +150,43 @@ def get_actual_grades(db: Session, sim_id: int) -> list[ActualGrade]:
         .order_by(ActualGrade.week.asc())
         .all()
     )
+
+
+# ── Simulation Notes ───────────────────────────────────────────────────────────
+
+def save_simulation_note(db: Session, sim_id: int, note: str) -> bool:
+    run = get_simulation_run(db, sim_id)
+    if not run:
+        return False
+    results = dict(run.results) if run.results else {}
+    results["note"] = note
+    run.results = results
+    db.commit()
+    return True
+
+
+def get_simulation_note(db: Session, sim_id: int) -> str | None:
+    run = get_simulation_run(db, sim_id)
+    if not run or not run.results:
+        return None
+    return run.results.get("note", None)
+
+
+# ── Simulation Tags ────────────────────────────────────────────────────────────
+
+def save_simulation_tags(db: Session, sim_id: int, tags: list) -> bool:
+    run = get_simulation_run(db, sim_id)
+    if not run:
+        return False
+    results = dict(run.results) if run.results else {}
+    results["tags"] = tags
+    run.results = results
+    db.commit()
+    return True
+
+
+def get_simulation_tags(db: Session, sim_id: int) -> list:
+    run = get_simulation_run(db, sim_id)
+    if not run or not run.results:
+        return []
+    return run.results.get("tags", [])
