@@ -261,7 +261,7 @@ export default function WellnessPage() {
               />
               <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fontSize: 10, fill: "#94a3b8" }} tickLine={false} axisLine={false} />
               <Tooltip
-                formatter={(v: number | null) => (v !== null ? [v.toFixed(0) + " / 5", ""] : ["—", ""])}
+                formatter={(v) => (typeof v === "number" ? [v.toFixed(0) + " / 5", ""] : ["—", ""])}
                 labelFormatter={(l) => `Date: ${l}`}
                 contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e2e8f0" }}
               />
