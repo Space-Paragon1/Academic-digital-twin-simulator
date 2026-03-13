@@ -1,6 +1,6 @@
 # Academic Digital Twin Simulator
 
-> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Includes JWT authentication, an AI advisor powered by Claude, Monte Carlo confidence bands, goal targeting, multi-student monitoring, and Canvas LMS integration.
+> A simulation engine that models a student as a dynamic system and predicts GPA, burnout risk, cognitive load, and optimal schedules under different academic workload scenarios. Includes JWT authentication, an AI advisor powered by Claude, Monte Carlo confidence bands, goal targeting, gamification, wellness tracking, offline support, and Canvas LMS integration.
 
 **Live Demo:** [academic-digital-twin-simulator.vercel.app](https://academic-digital-twin-simulator.vercel.app) · **API:** [academic-digital-twin-simulator-production.up.railway.app/docs](https://academic-digital-twin-simulator-production.up.railway.app/docs)
 
@@ -18,7 +18,7 @@ Academic-digital-twin-simulator/
                     ┌──────────────────────────────────────────┐
                     │             Next.js Frontend              │
                     │  Dashboard · Scenarios · Compare          │
-                    │  Optimizer · Advisor · Profile · Login    │
+                    │  Optimizer · Advisor · Schedule · Admin   │
                     └────────────┬─────────────────────────────┘
                                  │  REST API
                     ┌────────────▼─────────────────────────────┐
@@ -41,9 +41,9 @@ Academic-digital-twin-simulator/
                     └────────────┬─────────────────────────────┘
                                  │
                     ┌────────────▼─────────────────────────────┐
-                    │           SQLite Database                 │
+                    │           SQLite / PostgreSQL             │
                     │  students · courses · simulation_runs     │
-                    │  actual_grades                            │
+                    │  actual_grades · feedback                 │
                     └──────────────────────────────────────────┘
 ```
 
@@ -120,31 +120,57 @@ python -m pytest tests/ -v
 
 | Page | Route | Description |
 |------|-------|-------------|
-| **Home** | `/` | Landing page with feature overview and stats |
-| **Login / Register** | `/login` | JWT-based authentication — create an account or sign in |
-| **Dashboard** | `/dashboard` | Latest simulation with trend indicators vs previous run |
+| **Home** | `/` | Landing page with feature overview and sign-up CTA |
+| **Login / Register** | `/login` | JWT-based authentication |
+| **Dashboard** | `/dashboard` | Latest simulation, GPA trend chart, streak badge, Monte Carlo bands, email summary |
 | **Profile** | `/profile` | Student profile, course enrollment, and Canvas LMS import |
-| **Scenarios** | `/scenarios` | Run simulations, view history, manage results |
-| **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo bands, actual grade tracker, CSV export |
-| **Compare** | `/compare` | Side-by-side overlay of two scenarios |
+| **Scenarios** | `/scenarios` | Run simulations, save/load templates, What-If panel |
+| **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo, actual grade tracker, CSV export, replay |
+| **History** | `/history` | All simulations with text search, burnout/strategy filters, sort, CSV export, share |
+| **Compare** | `/compare` | Side-by-side overlay of two scenarios with winner summary |
 | **Optimizer** | `/optimizer` | Differential evolution schedule optimizer |
-| **AI Chat** | `/advisor` | Claude-powered advisor — auto-loads your latest simulation as context |
+| **Schedule** | `/schedule` | Auto-generated weekly study schedule based on course difficulty and credits |
+| **AI Advisor** | `/advisor` | Claude-powered advisor with course-specific quick-advice pills and chat history |
 | **Goal Targeting** | `/advisor/goal` | Find the schedule needed to hit a target GPA |
-| **All Students** | `/advisor/multi` | PIN-protected multi-student burnout risk and GPA overview |
+| **Multi-Student** | `/advisor/multi` | PIN-protected multi-student burnout risk and GPA overview |
+| **Settings** | `/settings` | Change password, email verification, notification preferences, theme, delete account |
+| **Admin** | `/admin` | PIN-gated admin dashboard with all students and analytics charts |
+| **Wellness Journal** | `/wellness` | Log daily mood and energy, chart against burnout predictions |
+| **Leaderboard** | `/leaderboard` | Anonymous GPA percentile ranking across all users |
+| **Badges** | `/badges` | Achievement badges for streaks, milestones, and simulation goals |
+| **Pomodoro Timer** | `/timer` | Built-in 25/5 focus timer with session logging |
+| **GPA Calculator** | `/gpa-calc` | Traditional letter-grade to GPA calculator |
+| **Course Load Advisor** | `/load-advisor` | Sustainability warning based on credits, work hours, and sleep |
+| **Multi-Semester** | `/planner` | Chain multiple semesters and see cumulative GPA trajectory |
+| **Replay** | `/replay` | Step through any simulation week-by-week with animated charts |
+| **Heatmap** | `/heatmap` | Burnout risk calendar heatmap across all simulation history |
+| **Progress Report** | `/report` | Printable/PDF progress report with GPA trend and best scenario |
+| **Share** | `/share/:id` | Public shareable simulation result (no auth required) |
+| **Verify Email** | `/verify-email` | Email verification landing page |
+| **Command Palette** | `Cmd+K` | Quick-launch any page or action by typing |
 
 ---
 
 ## Features
 
-### Authentication
-- **JWT-based register + login** at `/login` — bcrypt-hashed passwords, 7-day tokens
-- Signed-in user name shown in the navbar with a logout button
-- **Backward compatible** — seed/guest accounts accessed via student ID still work without a password
-- Default admin PIN for the All Students view: `1234`
+### Authentication & Account
+- **JWT-based register + login** — bcrypt-hashed passwords, 7-day tokens
+- **Password reset by email** — time-limited JWT link via Resend
+- **Email verification** — verify email on sign-up, resend from Settings
+- **Change password** — from Settings with current password confirmation
+- **Delete account** — type-to-confirm danger zone in Settings
+- **Rate limiting** — 10/min login, 5/min register (slowapi)
+- Signed-in user name shown in navbar with verification status badge
+
+### Notifications & Preferences
+- **Burnout alert emails** — auto-sent when a simulation returns HIGH burnout risk
+- **Weekly summary emails** — manual send from Dashboard, or toggle auto-weekly
+- **Theme preference** — System / Light / Dark, saved to account (not just localStorage)
+- **Notification toggles** — per-student opt-out for burnout alerts and weekly summaries
 
 ### Simulation Engine
 - **5-subsystem tick loop** run once per simulated week: Time System → Cognitive Load → Retention → Performance → Recovery
-- **Variable sleep schedule** — weekday 6.5h / weekend 9h average (50.5h/week) as an alternative to a fixed nightly target
+- **Variable sleep schedule** — weekday 6.5h / weekend 9h average as an alternative to a fixed nightly target
 - **Exam week modifiers** — cognitive load ×1.3, grade +5 if retention > 70%, grade −10 if burnout > 60%
 - **Extracurricular hours** — deducted from the weekly 168h budget before study time is allocated
 - **Mid-semester course drop** — freeze a course grade at a chosen week and remove it from ongoing load
@@ -156,16 +182,55 @@ Run 200 randomized simulations with sleep jitter as the variance proxy. Produces
 Natural-language chat powered by `claude-haiku-4-5-20251001`.
 
 - **Auto-context**: the latest simulation is automatically loaded — no manual selection needed
-- **Rich context**: Claude receives weekly GPA and cognitive load trends (early vs late semester), worst burnout week, sleep deficit, and peak overload weeks — not just the summary
-- Answers questions about burnout risk, study strategy, and schedule changes
-
-Requires an Anthropic API key — see [AI Advisor Setup](#ai-advisor-setup).
+- **Rich context**: Claude receives weekly GPA and cognitive load trends, worst burnout week, sleep deficit, and peak overload weeks
+- **Course-specific quick advice** — pill buttons for each enrolled course pre-fill the chat input
+- **Chat history** — persisted in localStorage per student with a clear-history button
+- **Explain a simulation** — History page "Explain" button auto-selects that sim and pre-fills a question
+- **AI scenario suggestions** — "Suggest a scenario for me" based on your goals
 
 ### Goal Targeting
-Grid search over study strategy × sleep hours × work hours to find the minimum schedule adjustments needed to achieve a target GPA. Returns recommended work hours, sleep, and strategy with actionable tips.
+Grid search over study strategy × sleep hours × work hours to find the minimum schedule adjustments needed to achieve a target GPA.
 
 ### Actual vs Predicted Tracking
-Log real weekly grades per course during the semester. The scenario detail page overlays actual grades (red dashed line) on the predicted trajectory and shows a comparison table with Δ deviation.
+Log real weekly grades per course. The scenario detail page overlays actual grades on the predicted trajectory with a comparison table and Δ deviation.
+
+### Scenario Templates
+Save any scenario configuration to localStorage with a custom name. Saved templates appear above presets in the scenario builder — click to load instantly.
+
+### What-If Panel
+Interactive sliders on the Scenarios page for sleep and work hours. Shows heuristic GPA and burnout estimates relative to your base simulation — clearly labelled as approximate.
+
+### Study Schedule Generator
+Auto-generates a Mon–Sun study schedule distributing hours proportional to course difficulty × credits. Shown as a color-coded calendar grid on the `/schedule` page.
+
+### Gamification
+- **Streak badge** — consecutive days with at least one simulation; shown in the Dashboard header
+- **Achievement badges** — unlock for: first simulation, 7-day streak, GPA goal met, LOW burnout risk, 10 simulations run
+- **Anonymous leaderboard** — your predicted GPA percentile among all users
+
+### Wellness Journal
+Log daily mood (1–5) and energy (1–5) from `/wellness`. Charted as a line graph and correlated against burnout predictions from your latest simulations.
+
+### Pomodoro Timer
+Built-in 25-minute focus / 5-minute break timer at `/timer`. Logs completed sessions and shows total weekly study hours.
+
+### GPA Calculator
+Traditional letter-grade → GPA calculator at `/gpa-calc`. Supports custom credit weights and multiple grading scales.
+
+### Course Load Advisor
+Pre-run sustainability check at `/load-advisor`. Warns if total credits + work hours + sleep target exceeds a safe threshold before you waste a simulation run.
+
+### Multi-Semester Planner
+Chain up to 4 semesters at `/planner`. Each semester inherits the ending GPA of the previous one — see your cumulative GPA trajectory over your full degree.
+
+### Simulation Replay
+Step through any simulation week-by-week at `/replay` with animated charts showing GPA, cognitive load, and burnout evolving over the semester.
+
+### Burnout Heatmap
+GitHub-style calendar grid at `/heatmap` showing burnout risk colour for each simulation across the year. Quickly identify high-risk streaks.
+
+### Progress Report
+One-click printable report at `/report` with GPA trend, burnout history, best scenario, and personalised recommendations. Uses `@media print` CSS — no external library needed.
 
 ### Intervention Timeline
 The weekly snapshot table flags high-risk weeks automatically:
@@ -175,8 +240,25 @@ The weekly snapshot table flags high-risk weeks automatically:
 ### CSV Export
 Download the full week-by-week snapshot table as CSV — every metric, every course, ready for your own analysis.
 
-### Multi-Student View
-PIN-protected view (default PIN: `1234`) for advisors to monitor all student profiles sorted by burnout risk then GPA gap. Summary banner shows how many students are at HIGH risk and how many are on track for their target GPA.
+### PDF Export
+Print any page with `Ctrl+P` / **Download Report** button. Print styles hide navigation, reset backgrounds, and add a "Academic Digital Twin — Simulation Report" header.
+
+### Shareable Simulation Links
+Share any simulation result via `/share/:id` — a public page showing key stats and a sign-up CTA. No auth required.
+
+### Offline Support
+Service worker at `public/sw.js` caches static assets with a network-first strategy for navigation. An amber offline banner appears automatically when the device loses connectivity.
+
+### Command Palette
+Press `Cmd+K` (Mac) / `Ctrl+K` (Windows) anywhere in the app to open a command palette. Type to search pages, actions, and simulations — navigate without touching the mouse.
+
+### Admin Dashboard
+PIN-gated page at `/admin` (default PIN: `admin1234`):
+- Table of all students with Name / Email / Registered / Latest GPA / Burnout Risk / Sim Count
+- Aggregate analytics charts: GPA distribution, burnout rate over time, most popular study strategies
+
+### Multi-Student Advisor View
+PIN-protected view at `/advisor/multi` (default PIN: `1234`) for advisors to monitor all students sorted by burnout risk then GPA gap.
 
 ### Canvas LMS Integration
 Import enrolled courses directly from your institution's Canvas instance.
@@ -205,7 +287,20 @@ Supports **paginated responses** — students with 50+ course histories get all 
 Weekly workload defaults to **2 × credit hours** (Carnegie Unit standard). All values are editable before importing.
 
 ### Dark Mode
-Toggle with the moon/sun icon in the navbar. Preference persisted in `localStorage` across sessions. System preference (`prefers-color-scheme`) is used on first visit.
+Preference saved to your account (`theme_preference` column). System preference (`prefers-color-scheme`) used on first visit. Toggle in Settings or the navbar.
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd/Ctrl + K` | Open command palette |
+| `?` | Show shortcuts modal |
+| `N` | New scenario |
+| `D` | Go to Dashboard |
+| `H` | Go to History |
+| `A` | Go to Advisor |
 
 ---
 
@@ -239,8 +334,10 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 | Variable | Where | Value |
 |----------|-------|-------|
 | `ANTHROPIC_API_KEY` | Railway | Your Anthropic key |
+| `RESEND_API_KEY` | Railway | Your Resend key (for password reset + notification emails) |
 | `CORS_ORIGINS` | Railway | `https://your-app.vercel.app` |
 | `SECRET_KEY` | Railway | Random 32-char string (`python -c "import secrets; print(secrets.token_hex(32))"`) |
+| `FRONTEND_URL` | Railway | `https://your-app.vercel.app` (used in email links) |
 | `NEXT_PUBLIC_API_URL` | Vercel | `https://your-backend.railway.app` |
 
 ---
@@ -282,6 +379,7 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 | Chart | Used On |
 |-------|---------|
 | GPA Trajectory — predicted line + Monte Carlo p10/p90 band + actual grades overlay | Dashboard, Scenario Detail, Optimizer |
+| GPA Trend — line chart of predicted GPA across all simulation runs | Dashboard |
 | Cognitive Load (line + fatigue overlay, exam week markers) | Dashboard, Scenario Detail |
 | Burnout Risk Gauge (radial) | Dashboard, Scenario Detail |
 | Time Allocation (pie) | Dashboard, Scenario Detail |
@@ -291,6 +389,9 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 | GPA Across Scenarios (cross-run sparkline) | Dashboard (2+ runs) |
 | GPA / Load / Burnout Comparison (overlaid lines) | Compare |
 | Per-Course Grade Comparison (table) | Compare |
+| Wellness mood/energy line chart | Wellness Journal |
+| Burnout calendar heatmap | Heatmap |
+| Admin: GPA distribution, burnout rate over time, strategy breakdown | Admin |
 
 ---
 
@@ -301,12 +402,19 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 | POST | `/api/v1/auth/register` | Register a new account — returns JWT |
 | POST | `/api/v1/auth/login` | Sign in with email + password — returns JWT |
 | GET | `/api/v1/auth/me` | Validate a JWT and return student info |
+| POST | `/api/v1/auth/forgot-password` | Send password reset email |
+| POST | `/api/v1/auth/reset-password` | Reset password with JWT token |
+| POST | `/api/v1/auth/change-password` | Change password (requires current password) |
+| POST | `/api/v1/auth/send-verification` | Send email verification link |
+| POST | `/api/v1/auth/verify-email` | Verify email with JWT token |
 | GET | `/api/v1/students/` | List all students |
 | POST | `/api/v1/students/` | Create student profile |
 | GET | `/api/v1/students/{id}` | Get student profile |
-| PUT | `/api/v1/students/{id}` | Update profile |
+| PUT | `/api/v1/students/{id}` | Update profile (including theme, notification prefs) |
+| DELETE | `/api/v1/students/{id}` | Delete student account |
 | POST | `/api/v1/students/{id}/courses` | Add course |
 | GET | `/api/v1/students/{id}/courses` | List courses |
+| POST | `/api/v1/students/{id}/send-summary` | Email weekly summary to student |
 | DELETE | `/api/v1/courses/{id}` | Remove course |
 | POST | `/api/v1/simulations/run` | Run simulation |
 | GET | `/api/v1/simulations/{id}` | Get result |
@@ -324,7 +432,7 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 
 ## Tech Stack
 
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, python-jose, bcrypt, pytest
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, python-jose, bcrypt, slowapi, resend, pytest
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts, Axios
 - **Deployed**: Railway (backend) · Vercel (frontend)
 
@@ -373,11 +481,17 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 **Login returns "Invalid email or password"**
 The seed student (`alex.demo@university.edu`) has no password — it was created before auth was added. Use the guest path: paste `localStorage.setItem('adt_student_id', '3')` in the browser console. To create a real account, go to `/login` → Register.
 
+**"column students.is_verified does not exist" on Railway**
+Railway uses PostgreSQL. Run the migration by redeploying — the `lifespan` startup handler in `main.py` runs `ALTER TABLE` statements to add any missing columns. If the error persists, trigger a fresh deploy with "Clear build cache" enabled.
+
 **AI advisor returns "Invalid API key"**
 Re-copy your key from console.anthropic.com → Settings → API Keys. Make sure there are no spaces or line breaks in `backend/.env`.
 
 **AI advisor returns "credit balance too low"**
 Add credits at console.anthropic.com → Settings → Plans & Billing.
+
+**Password reset / verification emails not arriving**
+Resend's free plan only sends to the account owner's email without domain verification. Verify a custom domain in the Resend dashboard (free with GitHub Education) to send to any address.
 
 **Canvas import returns "Invalid Canvas token"**
 Generate a new token: Canvas → Account → Settings → New Access Token. Copy the full token with no trailing spaces.
