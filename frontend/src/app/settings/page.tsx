@@ -86,12 +86,21 @@ export default function SettingsPage() {
   // Notification prefs loading
   const [notifLoading, setNotifLoading] = useState(false);
 
+  // Weekly digest state
+  const [digestDay, setDigestDay] = useState<string>("Monday");
+  const [sendNowLoading, setSendNowLoading] = useState(false);
+
   // Theme loading
   const [themeLoading, setThemeLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;
     studentsApi.get(user.studentId).then(setStudentData).catch(() => {});
+    // Load digest day from localStorage
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(`adt_digest_day_${user.studentId}`);
+      if (saved) setDigestDay(saved);
+    }
   }, [user]);
 
   async function handleChangePassword(e: React.FormEvent) {
@@ -305,7 +314,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Weekly Summary Toggle */}
-            <div className="flex items-center justify-between py-3">
+            <div className="flex items-center justify-between py-3 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Weekly summary emails</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -329,6 +338,53 @@ export default function SettingsPage() {
                   }`}
                 />
               </button>
+            </div>
+
+            {/* Weekly Digest Row */}
+            <div className="flex items-center justify-between py-3">
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Weekly Digest</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Schedule your weekly email digest
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 dark:text-slate-400">Send on:</span>
+                <select
+                  value={digestDay}
+                  title="Select day to send weekly digest"
+                  onChange={(e) => {
+                    setDigestDay(e.target.value);
+                    if (user && typeof window !== "undefined") {
+                      localStorage.setItem(`adt_digest_day_${user.studentId}`, e.target.value);
+                    }
+                  }}
+                  className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100 focus:border-brand-500 focus:outline-none"
+                >
+                  {["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map((day) => (
+                    <option key={day} value={day}>{day}</option>
+                  ))}
+                </select>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  isLoading={sendNowLoading}
+                  onClick={async () => {
+                    if (!user) return;
+                    setSendNowLoading(true);
+                    try {
+                      await accountApi.sendSummary(user.studentId);
+                      toast.success("Weekly digest sent to your inbox!");
+                    } catch (err: unknown) {
+                      toast.error(err instanceof Error ? err.message : "Failed to send digest.");
+                    } finally {
+                      setSendNowLoading(false);
+                    }
+                  }}
+                >
+                  Send Now
+                </Button>
+              </div>
             </div>
           </div>
         </div>

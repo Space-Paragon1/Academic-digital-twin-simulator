@@ -21,9 +21,11 @@ import { BurnoutRiskGauge } from "@/components/charts/BurnoutRiskGauge";
 import { TimeAllocationChart } from "@/components/charts/TimeAllocationChart";
 import { CourseGradesChart } from "@/components/charts/CourseGradesChart";
 import { AchievementBadges } from "@/components/ui/AchievementBadges";
-import { simulationsApi, studentsApi, accountApi, monteCarloApi } from "@/lib/api";
+import { BurnoutHeatmap } from "@/components/ui/BurnoutHeatmap";
+import { CourseImpactChart } from "@/components/ui/CourseImpactChart";
+import { simulationsApi, studentsApi, accountApi, monteCarloApi, coursesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/Toaster";
-import type { MonteCarloResult, SimulationResult } from "@/lib/types";
+import type { Course, MonteCarloResult, SimulationResult } from "@/lib/types";
 
 const STUDENT_ID_KEY = "adt_student_id";
 const GPA_GOAL_KEY_PREFIX = "adt_gpa_goal_";
@@ -121,6 +123,7 @@ export default function DashboardPage() {
   const [mcLoading, setMcLoading] = useState(false);
   // Feature 5: GPA Goal Tracker
   const [studentId, setStudentId] = useState<number>(0);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [gpaGoal, setGpaGoal] = useState<number>(3.5);
   const [gpaGoalInput, setGpaGoalInput] = useState<string>("3.5");
   const toast = useToast();
@@ -138,6 +141,7 @@ export default function DashboardPage() {
         setGpaGoalInput(String(parsed));
       }
     }
+    coursesApi.list(sid).then(setCourses).catch(() => {});
     Promise.all([simulationsApi.history(sid), studentsApi.get(sid)])
       .then(([results, student]) => {
         setAllResults(results);
@@ -400,6 +404,11 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Burnout Heatmap */}
+      {allResults.length > 0 && (
+        <BurnoutHeatmap simulations={allResults} />
+      )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {summaryCards.map((stat) => (
@@ -529,6 +538,11 @@ export default function DashboardPage() {
       <Card title="Per-Course Grade Trajectories" subtitle="Predicted grade % per course across the semester">
         <CourseGradesChart snapshots={weekly_snapshots} />
       </Card>
+
+      {/* Course Impact Chart */}
+      {courses.length > 0 && (
+        <CourseImpactChart courses={courses} simulation={latestResult} />
+      )}
     </div>
   );
 }
