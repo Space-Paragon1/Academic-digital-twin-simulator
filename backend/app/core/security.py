@@ -40,36 +40,44 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(_prepare(plain), hashed.encode("utf-8"))
 
 
-def create_access_token(student_id: int, email: str) -> str:
+def password_version(password_hash: str) -> str:
+    """Bind tokens to the current password without disclosing its stored hash."""
+    return hashlib.sha256(password_hash.encode("utf-8")).hexdigest()
+
+
+def create_access_token(student_id: int, email: str, password_hash: str) -> str:
     settings = get_settings()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": str(student_id), "email": email, "exp": expire}
+    payload = {"sub": str(student_id), "email": email, "exp": expire, "type": "access", "ver": password_version(password_hash)}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
 
 def decode_token(token: str) -> Optional[dict]:
     """Returns payload dict or None if token is invalid or expired."""
     try:
-        return jwt.decode(token, get_settings().SECRET_KEY, algorithms=["HS256"])
+        payload = jwt.decode(token, get_settings().SECRET_KEY, algorithms=["HS256"], options={"require_exp": True, "require_sub": True})
+        if payload.get("type") != "access" or not isinstance(payload.get("sub"), str) or not payload["sub"].isdigit():
+            return None
+        return payload
     except JWTError:
         return None
 
 
-def create_reset_token(email: str) -> str:
+def create_reset_token(email: str, password_hash: str) -> str:
     """Create a short-lived (15 min) JWT for password reset."""
     settings = get_settings()
     expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
-    payload = {"sub": email, "type": "password_reset", "exp": expire}
+    payload = {"sub": email, "type": "password_reset", "exp": expire, "ver": password_version(password_hash)}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
 
-def decode_reset_token(token: str) -> Optional[str]:
-    """Verify a password-reset JWT. Returns the email on success, None otherwise."""
+def decode_reset_token(token: str) -> Optional[dict]:
+    """Verify a password-reset JWT. Returns the payload on success, None otherwise."""
     try:
         payload = jwt.decode(token, get_settings().SECRET_KEY, algorithms=["HS256"])
         if payload.get("type") != "password_reset":
             return None
-        return payload.get("sub")  # the email
+        return payload if payload.get("sub") and payload.get("ver") and payload.get("exp") else None
     except JWTError:
         return None
 

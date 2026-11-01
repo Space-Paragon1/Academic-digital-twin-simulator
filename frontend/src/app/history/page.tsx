@@ -558,16 +558,6 @@ export default function HistoryPage() {
                       <Link href={`/advisor?explain=${result.id}`}>
                         <Button variant="secondary" size="sm">Explain</Button>
                       </Link>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          const url = `${window.location.origin}/share/${result.id}`;
-                          navigator.clipboard.writeText(url).then(() => alert("Share link copied!"));
-                        }}
-                      >
-                        Share
-                      </Button>
                       <Link href={`/scenarios/${result.id}`}>
                         <Button variant="secondary" size="sm">View</Button>
                       </Link>

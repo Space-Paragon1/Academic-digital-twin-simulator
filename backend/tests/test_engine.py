@@ -108,9 +108,10 @@ def test_api_health_check(client):
 
 
 def test_api_create_and_get_student(client, sample_student_data):
-    post = client.post("/api/v1/students/", json=sample_student_data)
+    post = client.post("/api/v1/auth/register", json={**sample_student_data, "password": "test-password"})
     assert post.status_code == 201
-    student_id = post.json()["id"]
+    student_id = post.json()["student_id"]
+    client.headers["Authorization"] = "Bearer " + post.json()["access_token"]
 
     get = client.get(f"/api/v1/students/{student_id}")
     assert get.status_code == 200

@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     axios
-      .get(`${API_BASE}/api/v1/auth/me`, { params: { token: stored } })
+      .get(`${API_BASE}/api/v1/auth/me`, { headers: { Authorization: `Bearer ${stored}` } })
       .then(({ data }) => {
         setToken(stored);
         setUser({ studentId: data.student_id, name: data.name, email: data.email });
@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {
         // Token expired or invalid — clear it
         localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(STUDENT_ID_KEY);
       })
       .finally(() => setIsLoading(false));
   }, []);

@@ -21,10 +21,13 @@ from app.core.security import (
     decode_reset_token,
     hash_password,
     verify_password,
+    password_version,
 )
 from app.db.database import get_db
 from app.db import crud
 from app.models.student import Student
+
+from app.api.dependencies import get_current_student, require_owner
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -108,7 +111,7 @@ def register(request: Request, req: RegisterRequest, db: Session = Depends(get_d
     except Exception as exc:
         logger.warning("Failed to send verification email on register: %s", exc)
 
-    token = create_access_token(student.id, student.email)
+    token = create_access_token(student.id, student.email, student.password_hash)
     return AuthResponse(
         access_token=token,
         student_id=student.id,
@@ -132,7 +135,7 @@ def login(request: Request, req: LoginRequest, db: Session = Depends(get_db)):
             detail="Invalid email or password.",
         )
 
-    token = create_access_token(student.id, student.email)
+    token = create_access_token(student.id, student.email, student.password_hash)
     return AuthResponse(
         access_token=token,
         student_id=student.id,
@@ -155,12 +158,12 @@ def forgot_password(req: ForgotPasswordRequest, db: Session = Depends(get_db)):
 
     logger = logging.getLogger(__name__)
     student = crud.get_student_by_email(db, req.email)
-    if not student:
+    if not student or not student.password_hash:
         logger.warning("Forgot-password: no account found for %s", req.email)
     else:
         try:
             settings = get_settings()
-            token = create_reset_token(req.email)
+            token = create_reset_token(req.email, student.password_hash)
             reset_url = f"{settings.FRONTEND_URL}/reset-password?token={token}"
             logger.warning("Sending reset email to %s", req.email)
             send_password_reset_email(req.email, reset_url)
@@ -180,28 +183,32 @@ def reset_password(req: ResetPasswordRequest, db: Session = Depends(get_db)):
             detail="Password must be at least 6 characters.",
         )
 
-    email = decode_reset_token(req.token)
-    if not email:
+    payload = decode_reset_token(req.token)
+    if not payload:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Reset link is invalid or has expired. Please request a new one.",
         )
 
-    student = crud.get_student_by_email(db, email)
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found.",
-        )
+    student = crud.get_student_by_email(db, payload["sub"])
+    if not student or not student.password_hash or payload["ver"] != password_version(student.password_hash):
+        raise HTTPException(400, "Reset link is invalid or has expired. Please request a new one.")
 
-    student.password_hash = hash_password(req.new_password)
+    # Compare-and-swap makes the token single-use even for concurrent requests.
+    updated = db.query(Student).filter(
+        Student.id == student.id, Student.password_hash == student.password_hash,
+    ).update({Student.password_hash: hash_password(req.new_password)}, synchronize_session=False)
+    if not updated:
+        db.rollback()
+        raise HTTPException(400, "Reset link has already been used.")
     db.commit()
     return {"message": "Password updated successfully. You can now sign in."}
 
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
-def change_password(req: ChangePasswordRequest, db: Session = Depends(get_db)):
+def change_password(req: ChangePasswordRequest, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Change password for a logged-in user (requires current password)."""
+    require_owner(current_student, req.student_id)
     if len(req.new_password) < 6:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -224,23 +231,12 @@ def change_password(req: ChangePasswordRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=AuthResponse)
-def me(token: str, db: Session = Depends(get_db)):
-    from app.core.security import decode_token
-    payload = decode_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token is invalid or expired.",
-        )
-    student = crud.get_student(db, int(payload["sub"]))
-    if not student:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
-
+def me(current_student: Student = Depends(get_current_student)):
     return AuthResponse(
-        access_token=token,
-        student_id=student.id,
-        name=student.name,
-        email=student.email,
+        access_token=create_access_token(current_student.id, current_student.email, current_student.password_hash),
+        student_id=current_student.id,
+        name=current_student.name,
+        email=current_student.email,
     )
 
 
@@ -253,8 +249,9 @@ class VerifyEmailRequest(BaseModel):
 
 
 @router.post("/send-verification", status_code=status.HTTP_200_OK)
-def send_verification(req: SendVerificationRequest, db: Session = Depends(get_db)):
+def send_verification(req: SendVerificationRequest, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Generate a new verification token and send a verification email."""
+    require_owner(current_student, req.student_id)
     import logging
     from app.core.config import get_settings
     from app.core.email import send_verification_email
@@ -296,6 +293,9 @@ def verify_email(req: VerifyEmailRequest, db: Session = Depends(get_db)):
     student = crud.get_student(db, student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
+
+    if student.verification_token != req.token:
+        raise HTTPException(400, "Verification link is invalid or has already been used.")
 
     student.is_verified = True
     student.verification_token = None

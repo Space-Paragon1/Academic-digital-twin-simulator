@@ -27,6 +27,12 @@ const api = axios.create({
   timeout: 10_000,
 });
 
+api.interceptors.request.use((config) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("adt_token") : null;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 api.interceptors.response.use(
   (r) => r,
   (err) => {

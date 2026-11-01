@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     # Used to sign JWT tokens. Override in production with a long random string.
     SECRET_KEY: str = "dev-secret-change-in-production"
 
+    # Comma-separated account IDs granted administrator access by the operator.
+    ADMIN_STUDENT_IDS: str = ""
+
+    @property
+    def admin_student_ids(self) -> set[int]:
+        return {int(value.strip()) for value in self.ADMIN_STUDENT_IDS.split(",") if value.strip()}
+
     # ── Email (Resend — https://resend.com) ──────────────────────────────────
     # Railway blocks outbound SMTP (ports 587/465); Resend uses HTTPS (443).
     # Sign up free at resend.com → API Keys → Create Key
