@@ -41,11 +41,17 @@ def db():
 
 
 @pytest.fixture
-def client(db):
+def client(db, monkeypatch):
     """FastAPI TestClient with the test DB session injected."""
     def override_get_db():
         yield db
 
+    # Keep integration tests independent of email credentials and rate-limit counters.
+    from app.api.routes.auth import limiter
+    from app.core import email
+    limiter._storage.reset()
+    for name in ("send_verification_email", "send_password_reset_email", "send_burnout_alert_email", "send_weekly_summary_email", "send_feedback_email"):
+        monkeypatch.setattr(email, name, lambda *args, **kwargs: None)
     app.dependency_overrides[get_db] = override_get_db
     with TestClient(app) as c:
         yield c

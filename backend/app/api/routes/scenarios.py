@@ -7,16 +7,20 @@ from app.schemas.simulation import OptimizationRequest, OptimizationResult, Scen
 from app.simulation.engine import SimulationEngine
 from app.simulation.optimizer import optimize_schedule
 
+from app.api.dependencies import get_current_student, require_owner
+from app.models.student import Student
+
 router = APIRouter(prefix="/scenarios", tags=["scenarios"])
 engine = SimulationEngine()
 
 
 @router.post("/optimize", response_model=OptimizationResult, status_code=status.HTTP_200_OK)
-def optimize(request: OptimizationRequest, db: Session = Depends(get_db)):
+def optimize(request: OptimizationRequest, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """
     Find the optimal schedule configuration for a student using differential evolution.
     Returns the best work hours, sleep hours, and study strategy for the given objective.
     """
+    require_owner(current_student, request.student_id)
     student = crud.get_student(db, request.student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")

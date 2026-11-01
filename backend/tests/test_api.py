@@ -6,7 +6,16 @@ import pytest
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _create_student(client, data):
-    return client.post("/api/v1/students/", json=data).json()
+    response = client.post("/api/v1/auth/register", json={**data, "password": "test-password"})
+    assert response.status_code == 201, response.text
+    auth = response.json()
+    client.headers["Authorization"] = f"Bearer {auth['access_token']}"
+    return client.get(f"/api/v1/students/{auth['student_id']}").json()
+
+
+@pytest.fixture(autouse=True)
+def signed_in(client):
+    _create_student(client, {"name": "Default", "email": "default@example.com"})
 
 
 def _add_courses(client, student_id, courses):
@@ -39,16 +48,14 @@ def test_health(client):
 # ── Students ──────────────────────────────────────────────────────────────────
 
 def test_create_student(client, sample_student_data):
-    r = client.post("/api/v1/students/", json=sample_student_data)
-    assert r.status_code == 201
-    body = r.json()
+    body = _create_student(client, sample_student_data)
     assert body["email"] == sample_student_data["email"]
     assert "id" in body
 
 
 def test_duplicate_student_email_rejected(client, sample_student_data):
-    client.post("/api/v1/students/", json=sample_student_data)
-    r = client.post("/api/v1/students/", json=sample_student_data)
+    _create_student(client, sample_student_data)
+    r = client.post("/api/v1/auth/register", json={**sample_student_data, "password": "test-password"})
     assert r.status_code == 409
 
 

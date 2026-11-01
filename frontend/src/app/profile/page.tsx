@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -14,37 +16,23 @@ import { useToast } from "@/components/ui/Toaster";
 import { simulationsApi } from "@/lib/api";
 import type { CourseCreate, StudentCreate, SimulationResult } from "@/lib/types";
 
-const STUDENT_ID_KEY = "adt_student_id";
 
 export default function ProfilePage() {
-  const { student, courses, isLoading, error, createStudent, updateStudent, loadStudent, addCourse, removeCourse, loadCourses } = useStudent();
+  const { student, courses, isLoading, error, updateStudent, loadStudent, addCourse, removeCourse, loadCourses } = useStudent();
   const toast = useToast();
+  const { user, isLoading: authLoading } = useAuth();
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [initDone, setInitDone] = useState(false);
   const [simHistory, setSimHistory] = useState<SimulationResult[]>([]);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STUDENT_ID_KEY);
-    if (stored) {
-      const id = parseInt(stored);
-      loadStudent(id).then(() => loadCourses(id)).catch(() => {});
-      simulationsApi.history(id).then(setSimHistory).catch(() => {});
+    if (authLoading) return;
+    if (user) {
+      loadStudent(user.studentId).then(() => loadCourses(user.studentId)).catch(() => {});
+      simulationsApi.history(user.studentId).then(setSimHistory).catch(() => {});
     }
     setInitDone(true);
-  }, []);
-
-  const handleCreateStudent = async (data: StudentCreate) => {
-    try {
-      const s = await createStudent(data);
-      if (s) {
-        localStorage.setItem(STUDENT_ID_KEY, String(s.id));
-        await loadCourses(s.id).catch(() => {});
-        toast.success("Profile created! Add your courses below.", "Welcome");
-      }
-    } catch {
-      // error shown inline by hook
-    }
-  };
+  }, [user, authLoading, loadStudent, loadCourses]);
 
   const handleUpdateStudent = async (data: StudentCreate) => {
     if (!student) return;
@@ -76,8 +64,12 @@ export default function ProfilePage() {
     }
   };
 
-  if (!initDone || isLoading) {
+  if (authLoading || !initDone || isLoading) {
     return <div className="flex h-64 items-center justify-center"><Spinner size="lg" /></div>;
+  }
+
+  if (!user) {
+    return <Card title="Sign in to manage your profile"><Link href="/login" className="text-brand-600 underline">Sign in or create an account</Link></Card>;
   }
 
   return (
@@ -88,10 +80,10 @@ export default function ProfilePage() {
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      <Card title={student ? "Edit Profile" : "Create Your Profile"}>
+      <Card title={"Edit Profile"}>
         <StudentProfileForm
           initial={student ?? undefined}
-          onSubmit={student ? handleUpdateStudent : handleCreateStudent}
+          onSubmit={handleUpdateStudent}
           isLoading={isLoading}
         />
       </Card>

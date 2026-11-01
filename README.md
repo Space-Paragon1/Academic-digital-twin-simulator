@@ -99,11 +99,10 @@ cd backend
 python seed.py
 ```
 
-Prints the demo student ID. Paste it in the browser console:
-```js
-localStorage.setItem('adt_student_id', '3')
-```
-Then refresh — the app loads "Alex Demo" with 5 courses and 4 pre-run scenarios.
+The seed script creates passwordless demo records for local development. These
+records require a signed-in administrator to access; setting a student ID in
+localStorage does not grant access. To use the app normally, register at `/login`
+and add courses to your own profile. See the authorization notes below for admin setup.
 
 ### Run Tests
 
@@ -112,7 +111,7 @@ cd backend
 python -m pytest tests/ -v
 ```
 
-85 tests, all passing.
+147 tests, including authentication and cross-account authorization regression coverage.
 
 ---
 
@@ -126,15 +125,15 @@ python -m pytest tests/ -v
 | **Profile** | `/profile` | Student profile, course enrollment, and Canvas LMS import |
 | **Scenarios** | `/scenarios` | Run simulations, save/load templates, What-If panel |
 | **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo, actual grade tracker, CSV export, replay |
-| **History** | `/history` | All simulations with text search, burnout/strategy filters, sort, CSV export, share |
+| **History** | `/history` | All simulations with text search, burnout/strategy filters, sort, CSV export |
 | **Compare** | `/compare` | Side-by-side overlay of two scenarios with winner summary |
 | **Optimizer** | `/optimizer` | Differential evolution schedule optimizer |
 | **Schedule** | `/schedule` | Auto-generated weekly study schedule based on course difficulty and credits |
 | **AI Advisor** | `/advisor` | Claude-powered advisor with course-specific quick-advice pills and chat history |
 | **Goal Targeting** | `/advisor/goal` | Find the schedule needed to hit a target GPA |
-| **Multi-Student** | `/advisor/multi` | PIN-protected multi-student burnout risk and GPA overview |
+| **Multi-Student** | `/advisor/multi` | Server-authorized admin view of student burnout risk and GPA |
 | **Settings** | `/settings` | Change password, email verification, notification preferences, theme, delete account |
-| **Admin** | `/admin` | PIN-gated admin dashboard with all students and analytics charts |
+| **Admin** | `/admin` | Server-authorized admin dashboard with student analytics |
 | **Wellness Journal** | `/wellness` | Log daily mood and energy, chart against burnout predictions |
 | **Leaderboard** | `/leaderboard` | Anonymous GPA percentile ranking across all users |
 | **Badges** | `/badges` | Achievement badges for streaks, milestones, and simulation goals |
@@ -145,7 +144,7 @@ python -m pytest tests/ -v
 | **Replay** | `/replay` | Step through any simulation week-by-week with animated charts |
 | **Heatmap** | `/heatmap` | Burnout risk calendar heatmap across all simulation history |
 | **Progress Report** | `/report` | Printable/PDF progress report with GPA trend and best scenario |
-| **Share** | `/share/:id` | Public shareable simulation result (no auth required) |
+| **Share** | `/share/:id` | Privacy notice; public sharing is disabled |
 | **Verify Email** | `/verify-email` | Email verification landing page |
 | **Command Palette** | `Cmd+K` | Quick-launch any page or action by typing |
 
@@ -154,6 +153,25 @@ python -m pytest tests/ -v
 ## Features
 
 ### Authentication & Account
+
+Private API requests require `Authorization: Bearer <access_token>`, including
+`/auth/me`; tokens in query strings are not accepted. Ordinary accounts can
+access only their own profiles, courses, simulations, notes, tags, and grades.
+Advisor, optimization, and Canvas requests enforce the same ownership rules.
+Missing or invalid authentication returns 401; foreign resource IDs return 404.
+Listing all students and creating passwordless profiles require administrator access.
+New users register through `/auth/register`.
+
+Operators can set `ADMIN_STUDENT_IDS=1,2` on the backend to grant those accounts
+cross-account access. The default is empty. Browser PINs and localStorage IDs
+cannot grant permissions. Keep `SECRET_KEY` private and replace its development
+default before deploying.
+
+Access, reset, and verification tokens have distinct purposes. Password changes
+and resets revoke existing access/reset tokens; reset tokens are single-use.
+Verification links must match the stored token and are consumed on use. This
+update requires users to sign in again and request new password-reset links.
+
 - **JWT-based register + login** — bcrypt-hashed passwords, 7-day tokens
 - **Password reset by email** — time-limited JWT link via Resend
 - **Email verification** — verify email on sign-up, resend from Settings
@@ -244,7 +262,7 @@ Download the full week-by-week snapshot table as CSV — every metric, every cou
 Print any page with `Ctrl+P` / **Download Report** button. Print styles hide navigation, reset backgrounds, and add a "Academic Digital Twin — Simulation Report" header.
 
 ### Shareable Simulation Links
-Share any simulation result via `/share/:id` — a public page showing key stats and a sign-up CTA. No auth required.
+Public sharing is disabled. Existing `/share/:id` links show a privacy notice. Simulation results require owner or administrator authentication. Opt-in, random, revocable sharing links are not yet implemented.
 
 ### Offline Support
 Service worker at `public/sw.js` caches static assets with a network-first strategy for navigation. An amber offline banner appears automatically when the device loses connectivity.
@@ -253,12 +271,12 @@ Service worker at `public/sw.js` caches static assets with a network-first strat
 Press `Cmd+K` (Mac) / `Ctrl+K` (Windows) anywhere in the app to open a command palette. Type to search pages, actions, and simulations — navigate without touching the mouse.
 
 ### Admin Dashboard
-PIN-gated page at `/admin` (default PIN: `admin1234`):
+The `/admin` page requires a signed-in account whose ID is configured in backend `ADMIN_STUDENT_IDS`. The existing UI PIN (`admin1234`) is only an extra screen gate:
 - Table of all students with Name / Email / Registered / Latest GPA / Burnout Risk / Sim Count
 - Aggregate analytics charts: GPA distribution, burnout rate over time, most popular study strategies
 
 ### Multi-Student Advisor View
-PIN-protected view at `/advisor/multi` (default PIN: `1234`) for advisors to monitor all students sorted by burnout risk then GPA gap.
+The `/advisor/multi` view requires server-configured administrator access to monitor all students sorted by burnout risk then GPA gap. Its existing UI PIN (`1234`) does not grant API access.
 
 ### Canvas LMS Integration
 Import enrolled courses directly from your institution's Canvas instance.
@@ -479,7 +497,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 **Login returns "Invalid email or password"**
-The seed student (`alex.demo@university.edu`) has no password — it was created before auth was added. Use the guest path: paste `localStorage.setItem('adt_student_id', '3')` in the browser console. To create a real account, go to `/login` → Register.
+The seed student (`alex.demo@university.edu`) has no password and cannot sign in. Register a new account at `/login`. Existing accounts must sign in again after the authorization update; old tokens are rejected.
 
 **"column students.is_verified does not exist" on Railway**
 Railway uses PostgreSQL. Run the migration by redeploying — the `lifespan` startup handler in `main.py` runs `ALTER TABLE` statements to add any missing columns. If the error persists, trigger a fresh deploy with "Clear build cache" enabled.

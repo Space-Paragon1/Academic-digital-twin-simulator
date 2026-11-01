@@ -118,7 +118,9 @@ export default function SettingsPage() {
     setPwLoading(true);
     try {
       await passwordApi.changePassword(user.studentId, currentPassword, newPassword);
-      toast.success("Password updated successfully.");
+      toast.success("Password updated. Please sign in again.");
+      logout();
+      router.push("/login");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");

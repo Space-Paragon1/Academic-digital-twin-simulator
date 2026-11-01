@@ -16,6 +16,9 @@ from app.schemas.simulation import (
 from app.simulation.engine import SimulationEngine
 from app.simulation.monte_carlo import run_monte_carlo
 
+from app.api.dependencies import get_current_student, require_owner, require_simulation_owner
+from app.models.student import Student
+
 router = APIRouter(prefix="/simulations", tags=["simulations"])
 engine = SimulationEngine()
 
@@ -29,11 +32,12 @@ class LeaderboardEntry(BaseModel):
 
 
 @router.post("/run", response_model=SimulationResult, status_code=status.HTTP_201_CREATED)
-def run_simulation(config: ScenarioConfig, db: Session = Depends(get_db)):
+def run_simulation(config: ScenarioConfig, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """
     Run a full semester simulation for the given scenario configuration.
     Persists the result to the database and returns the full SimulationResult.
     """
+    require_owner(current_student, config.student_id)
     student = crud.get_student(db, config.student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
@@ -73,11 +77,12 @@ def run_simulation(config: ScenarioConfig, db: Session = Depends(get_db)):
 
 
 @router.post("/monte-carlo", response_model=MonteCarloResult)
-def run_monte_carlo_endpoint(request: MonteCarloRequest, db: Session = Depends(get_db)):
+def run_monte_carlo_endpoint(request: MonteCarloRequest, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """
     Run a Monte Carlo simulation to produce GPA confidence bands (p10/p50/p90).
     Results are NOT persisted — call /run first to save the base scenario.
     """
+    require_owner(current_student, request.scenario_config.student_id)
     student = crud.get_student(db, request.scenario_config.student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
@@ -99,7 +104,7 @@ def run_monte_carlo_endpoint(request: MonteCarloRequest, db: Session = Depends(g
 
 
 @router.get("/leaderboard", response_model=list[LeaderboardEntry])
-def get_leaderboard(db: Session = Depends(get_db)):
+def get_leaderboard(db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """
     Return top 10 anonymous leaderboard entries.
     Each entry is the best simulation per student ordered by GPA descending.
@@ -150,8 +155,9 @@ def get_leaderboard(db: Session = Depends(get_db)):
 
 
 @router.get("/{sim_id}", response_model=SimulationResult)
-def get_simulation(sim_id: int, db: Session = Depends(get_db)):
+def get_simulation(sim_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Retrieve a stored simulation result by ID."""
+    require_simulation_owner(db, current_student, sim_id)
     run = crud.get_simulation_run(db, sim_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
@@ -167,8 +173,10 @@ def list_simulations(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
+    current_student: Student = Depends(get_current_student),
 ):
     """List simulation runs for a student with pagination."""
+    require_owner(current_student, student_id)
     student = crud.get_student(db, student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
@@ -199,8 +207,9 @@ class TagsResponse(BaseModel):
 
 
 @router.post("/{sim_id}/note", response_model=NoteResponse)
-def save_note(sim_id: int, body: NoteBody, db: Session = Depends(get_db)):
+def save_note(sim_id: int, body: NoteBody, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Save a text note to a simulation run."""
+    require_simulation_owner(db, current_student, sim_id)
     run = crud.get_simulation_run(db, sim_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
@@ -209,8 +218,9 @@ def save_note(sim_id: int, body: NoteBody, db: Session = Depends(get_db)):
 
 
 @router.get("/{sim_id}/note", response_model=NoteResponse)
-def get_note(sim_id: int, db: Session = Depends(get_db)):
+def get_note(sim_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Retrieve a stored note for a simulation run."""
+    require_simulation_owner(db, current_student, sim_id)
     run = crud.get_simulation_run(db, sim_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
@@ -219,8 +229,9 @@ def get_note(sim_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{sim_id}/tags", response_model=TagsResponse)
-def save_tags(sim_id: int, body: TagsBody, db: Session = Depends(get_db)):
+def save_tags(sim_id: int, body: TagsBody, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Save tags to a simulation run."""
+    require_simulation_owner(db, current_student, sim_id)
     run = crud.get_simulation_run(db, sim_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
@@ -229,8 +240,9 @@ def save_tags(sim_id: int, body: TagsBody, db: Session = Depends(get_db)):
 
 
 @router.get("/{sim_id}/tags", response_model=TagsResponse)
-def get_tags(sim_id: int, db: Session = Depends(get_db)):
+def get_tags(sim_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Retrieve tags for a simulation run."""
+    require_simulation_owner(db, current_student, sim_id)
     run = crud.get_simulation_run(db, sim_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
@@ -239,8 +251,9 @@ def get_tags(sim_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{sim_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_simulation(sim_id: int, db: Session = Depends(get_db)):
+def delete_simulation(sim_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Delete a simulation run by ID."""
+    require_simulation_owner(db, current_student, sim_id)
     deleted = crud.delete_simulation_run(db, sim_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
@@ -251,8 +264,10 @@ def save_actual_grades(
     sim_id: int,
     body: ActualGradesUpdate,
     db: Session = Depends(get_db),
+    current_student: Student = Depends(get_current_student),
 ):
     """Save (replace) actual weekly grades for a simulation run."""
+    require_simulation_owner(db, current_student, sim_id)
     run = crud.get_simulation_run(db, sim_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")
@@ -261,8 +276,9 @@ def save_actual_grades(
 
 
 @router.get("/{sim_id}/actual-grades", response_model=ActualGradesResponse)
-def get_actual_grades(sim_id: int, db: Session = Depends(get_db)):
+def get_actual_grades(sim_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Retrieve all stored actual grades for a simulation run."""
+    require_simulation_owner(db, current_student, sim_id)
     run = crud.get_simulation_run(db, sim_id)
     if not run:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Simulation not found.")

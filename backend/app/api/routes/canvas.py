@@ -18,6 +18,9 @@ from app.db.database import get_db
 from app.db import crud
 from app.services.canvas_service import CanvasImportPreview, fetch_canvas_courses
 
+from app.api.dependencies import get_current_student, require_owner
+from app.models.student import Student
+
 router = APIRouter(prefix="/canvas", tags=["canvas"])
 
 
@@ -31,6 +34,7 @@ class CanvasPreviewRequest(BaseModel):
 def preview_canvas_courses(
     request: CanvasPreviewRequest,
     db: Session = Depends(get_db),
+    current_student: Student = Depends(get_current_student),
 ):
     """
     Fetch active course enrollments from the student's Canvas LMS instance.
@@ -41,6 +45,7 @@ def preview_canvas_courses(
 
     The canvas_token is used only for this request and is never stored.
     """
+    require_owner(current_student, request.student_id)
     student = crud.get_student(db, request.student_id)
     if not student:
         raise HTTPException(

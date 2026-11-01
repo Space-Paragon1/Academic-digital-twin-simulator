@@ -23,12 +23,15 @@ from app.schemas.simulation import (
 )
 from app.simulation.engine import SimulationEngine
 
+from app.api.dependencies import get_current_student, require_owner, require_simulation_owner
+from app.models.student import Student
+
 router = APIRouter(prefix="/advisor", tags=["advisor"])
 _engine = SimulationEngine()
 
 
 @router.post("/chat", response_model=AdvisorResponse)
-def advisor_chat(request: AdvisorRequest, db: Session = Depends(get_db)):
+def advisor_chat(request: AdvisorRequest, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """
     AI advisor chat powered by Claude.
 
@@ -36,6 +39,9 @@ def advisor_chat(request: AdvisorRequest, db: Session = Depends(get_db)):
     student profile, enrolled courses, and (optionally) simulation results
     as context for answering academic planning questions.
     """
+    require_owner(current_student, request.student_id)
+    if request.simulation_id is not None:
+        require_simulation_owner(db, current_student, request.simulation_id)
     try:
         import anthropic
     except ImportError:
@@ -177,13 +183,14 @@ Guidelines:
 
 
 @router.post("/goal-target", response_model=GoalTargetResult)
-def goal_target(request: GoalTargetRequest, db: Session = Depends(get_db)):
+def goal_target(request: GoalTargetRequest, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """
     Find the schedule parameters needed to achieve a target GPA.
 
     Performs a grid search over work hours, sleep, and study strategy.
     Returns the most achievable schedule (or the closest if target is not reachable).
     """
+    require_owner(current_student, request.student_id)
     student = crud.get_student(db, request.student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")

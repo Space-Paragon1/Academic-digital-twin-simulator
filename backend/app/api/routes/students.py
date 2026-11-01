@@ -9,6 +9,9 @@ from app.db.database import get_db
 from app.db import crud
 from app.schemas.student import StudentCreate, StudentOut, StudentUpdate
 
+from app.api.dependencies import get_current_student, require_admin, require_owner
+from app.models.student import Student
+
 router = APIRouter(prefix="/students", tags=["students"])
 
 _log = logging.getLogger(__name__)
@@ -21,14 +24,16 @@ class FeedbackPayload(BaseModel):
 
 
 @router.get("/", response_model=list[StudentOut])
-def list_students(db: Session = Depends(get_db)):
+def list_students(db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """List all student profiles (used by multi-student advisor view)."""
+    require_admin(current_student)
     return crud.get_all_students(db)
 
 
 @router.post("/", response_model=StudentOut, status_code=status.HTTP_201_CREATED)
-def create_student(payload: StudentCreate, db: Session = Depends(get_db)):
+def create_student(payload: StudentCreate, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Create a new student profile."""
+    require_admin(current_student)
     existing = crud.get_student_by_email(db, payload.email)
     if existing:
         raise HTTPException(
@@ -39,8 +44,9 @@ def create_student(payload: StudentCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{student_id}", response_model=StudentOut)
-def get_student(student_id: int, db: Session = Depends(get_db)):
+def get_student(student_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Retrieve a student profile by ID."""
+    require_owner(current_student, student_id)
     student = crud.get_student(db, student_id)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
@@ -48,8 +54,9 @@ def get_student(student_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{student_id}", response_model=StudentOut)
-def update_student(student_id: int, payload: StudentUpdate, db: Session = Depends(get_db)):
+def update_student(student_id: int, payload: StudentUpdate, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Update a student profile."""
+    require_owner(current_student, student_id)
     student = crud.update_student(db, student_id, payload)
     if not student:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
@@ -57,16 +64,18 @@ def update_student(student_id: int, payload: StudentUpdate, db: Session = Depend
 
 
 @router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_student(student_id: int, db: Session = Depends(get_db)):
+def delete_student(student_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Delete a student account and all associated data."""
+    require_owner(current_student, student_id)
     deleted = crud.delete_student(db, student_id)
     if not deleted:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Student not found.")
 
 
 @router.post("/{student_id}/send-summary", status_code=status.HTTP_200_OK)
-def send_summary(student_id: int, db: Session = Depends(get_db)):
+def send_summary(student_id: int, db: Session = Depends(get_db), current_student: Student = Depends(get_current_student)):
     """Email the student a summary of their simulation history."""
+    require_owner(current_student, student_id)
     import logging
     from app.core.email import send_weekly_summary_email
 
@@ -106,8 +115,10 @@ def send_summary(student_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/feedback", status_code=status.HTTP_200_OK)
-def submit_feedback(payload: FeedbackPayload):
+def submit_feedback(payload: FeedbackPayload, current_student: Student = Depends(get_current_student)):
     """Log user feedback and optionally send it to the admin via email."""
+    if payload.student_id is not None:
+        require_owner(current_student, payload.student_id)
     _log.info(
         "Feedback: page=%s student_id=%s message=%s",
         payload.page,
