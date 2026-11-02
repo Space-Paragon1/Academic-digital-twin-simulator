@@ -191,10 +191,10 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <Link href="/scenarios" className="text-sm text-brand-600 hover:underline">← Scenarios</Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">
             {scenario_config.scenario_name ?? `Scenario #${result.id}`}
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
             {scenario_config.num_weeks} weeks · {scenario_config.work_hours_per_week}h work ·{" "}
             {scenario_config.sleep_target_hours}h sleep · {scenario_config.study_strategy} study
             {scenario_config.extracurricular_hours ? ` · ${scenario_config.extracurricular_hours}h extracurricular` : ""}
@@ -227,8 +227,8 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
           { label: "Overload Weeks",  value: String(summary.peak_overload_weeks.length), sub: summary.peak_overload_weeks.length > 0 ? `Weeks ${summary.peak_overload_weeks.slice(0, 4).join(", ")}` : "None detected" },
         ].map((stat) => (
           <Card key={stat.label} padding="sm">
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{stat.label}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">{stat.label}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">{stat.value}</p>
             <p className="text-xs text-gray-400 mt-0.5">{stat.sub}</p>
           </Card>
         ))}
@@ -275,7 +275,7 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Median (p50)</p>
-              <p className="text-2xl font-bold text-gray-900">{mcResult.p50_gpa.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{mcResult.p50_gpa.toFixed(2)}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Optimistic (p90)</p>
@@ -283,7 +283,7 @@ export default function ScenarioDetailPage({ params }: { params: Promise<{ id: s
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide">Avg Burnout Prob</p>
-              <p className="text-2xl font-bold text-gray-900">{(mcResult.burnout_probability_mean * 100).toFixed(0)}%</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{(mcResult.burnout_probability_mean * 100).toFixed(0)}%</p>
             </div>
             <div className="self-end">
               <Button variant="secondary" size="sm" onClick={runMonteCarlo} isLoading={mcLoading}>

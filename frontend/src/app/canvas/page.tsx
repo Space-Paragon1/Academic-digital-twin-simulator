@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
+import { CanvasConnectionFields, rememberCanvasSite } from "@/components/forms/CanvasConnectionFields";
 import { Button } from "@/components/ui/Button";
 import { canvasApi, coursesApi } from "@/lib/api";
 import { useToast } from "@/components/ui/Toaster";
@@ -52,6 +53,8 @@ export default function CanvasPage() {
         canvas_url: canvasUrl.trim(),
         canvas_token: token.trim(),
       });
+      rememberCanvasSite(studentId, canvasUrl);
+      setToken("");
       setCourses(preview.courses.map((c) => ({ ...c, selected: true })));
       setStep(2);
     } catch (err: unknown) {
@@ -140,44 +143,12 @@ export default function CanvasPage() {
 
       {/* Step 1: Enter credentials */}
       {step === 1 && (
-        <Card title="Step 1 — Enter Canvas Credentials">
+        <Card title="Step 1 — Connect your Canvas account">
           <form onSubmit={handleFetch} className="space-y-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Your API token is used only for this import request and is never stored.
-            </p>
-
-            <div>
-              <label htmlFor="canvas-url" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Canvas Base URL
-              </label>
-              <input
-                id="canvas-url"
-                type="url"
-                required
-                placeholder="https://yourschool.instructure.com"
-                value={canvasUrl}
-                onChange={(e) => setCanvasUrl(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="canvas-token" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Canvas Access Token
-              </label>
-              <input
-                id="canvas-token"
-                type="password"
-                required
-                placeholder="Paste your Canvas API token"
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-              />
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                In Canvas: Account → Settings → Approved Integrations → New Access Token
-              </p>
-            </div>
+            <CanvasConnectionFields
+              studentId={studentId} canvasUrl={canvasUrl} onUrlChange={setCanvasUrl}
+              token={token} onTokenChange={setToken} disabled={isLoading}
+            />
 
             {!studentId && (
               <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">

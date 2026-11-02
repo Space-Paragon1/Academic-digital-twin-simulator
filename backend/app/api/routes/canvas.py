@@ -75,8 +75,8 @@ def preview_canvas_courses(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=(
-                "No active courses found in your Canvas account. "
-                "Make sure you are enrolled in courses with 'active' status."
+                "Canvas connected, but returned no published courses with an active student enrollment. "
+                "Check Courses → All Courses in Canvas. Unpublished, concluded, and teacher-only courses are not imported."
             ),
         )
 
