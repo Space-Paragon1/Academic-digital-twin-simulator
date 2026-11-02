@@ -282,13 +282,15 @@ The `/advisor/multi` view requires server-configured administrator access to mon
 Import enrolled courses directly from your institution's Canvas instance.
 
 1. On the **Profile** page, click **Import from Canvas**
-2. Enter your Canvas base URL (e.g. `https://yourschool.instructure.com`)
-3. Paste a Canvas personal access token
+2. Select **Grambling State University** to fill its Canvas address automatically. For another school, paste any link from its Canvas dashboard or a course page; the app extracts the site address.
+3. Paste the full Canvas access token from that same school/account. The app trims surrounding whitespace and accepts a pasted `Bearer ` prefix.
 4. Review, edit credits/difficulty, and import
 
-Supports **paginated responses** — students with 50+ course histories get all their active enrollments, not just the first page.
+Supports **paginated responses** for published courses with active student enrollments. Repeated pagination links, excessive page counts, and slow responses stop with an actionable error instead of hanging or returning a partial result. A successfully connected site is remembered per account in this browser; tokens are never saved.
 
-**Getting a Canvas token:** Canvas → Account → Settings → Approved Integrations → New Access Token
+**Token location:** Canvas → Account → Settings → Approved Integrations. Token availability and API permissions are controlled by your institution.
+
+**Connection errors:** A Canvas 401 means that Canvas rejected the submitted credentials for that site; the app cannot determine whether the token was copied incorrectly, expired, or revoked. A 403 explains the course-permission problem. Network errors, HTML sign-in pages, redirects, and rate limits have separate messages. No token is forwarded to a different site through redirects or pagination.
 
 > Your token is used only for the single fetch request and is **never stored**.
 

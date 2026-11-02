@@ -165,13 +165,11 @@ export default function LoginPage() {
           </Button>
         </form>
 
-        {/* Demo bypass */}
         <div className="mt-6 text-center text-xs text-slate-400 dark:text-slate-500">
           Just exploring?{" "}
-          <Link href="/dashboard" className="text-brand-600 hover:underline">
-            Continue as guest
-          </Link>{" "}
-          (uses stored student ID)
+          <Link href="/#how-it-works" className="text-brand-600 dark:text-brand-400 hover:underline">
+            See how it works
+          </Link>
         </div>
       </div>
     </div>

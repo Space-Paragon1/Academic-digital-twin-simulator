@@ -133,7 +133,7 @@ export const actualGradesApi = {
 export const canvasApi = {
   preview: (request: CanvasPreviewRequest) =>
     api
-      .post<CanvasImportPreview>("/api/v1/canvas/preview", request, { timeout: 20_000 })
+      .post<CanvasImportPreview>("/api/v1/canvas/preview", request, { timeout: 60_000 })
       .then((r) => r.data),
 };
 

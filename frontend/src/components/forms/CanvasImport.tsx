@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { CanvasConnectionFields, rememberCanvasSite } from "@/components/forms/CanvasConnectionFields";
 import { Button } from "@/components/ui/Button";
-import { Spinner } from "@/components/ui/Spinner";
 import { canvasApi, coursesApi } from "@/lib/api";
 import type { CanvasCoursePreviewed, CourseCreate } from "@/lib/types";
 
@@ -39,6 +39,8 @@ export function CanvasImport({ studentId, onImported }: CanvasImportProps) {
         canvas_url: canvasUrl.trim(),
         canvas_token: token.trim(),
       });
+      rememberCanvasSite(studentId, canvasUrl);
+      setToken("");
       setCourses(preview.courses.map((c) => ({ ...c, selected: true })));
       setStep("preview");
     } catch (err: unknown) {
@@ -105,9 +107,9 @@ export function CanvasImport({ studentId, onImported }: CanvasImportProps) {
   }
 
   return (
-    <div className="rounded-xl border border-brand-200 bg-brand-50 p-5 space-y-4">
+    <div className="rounded-xl border border-brand-200 dark:border-brand-800 bg-brand-50 dark:bg-slate-900 p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-brand-900">Canvas LMS Import</h3>
+        <h3 className="text-sm font-semibold text-brand-900 dark:text-brand-100">Canvas LMS Import</h3>
         <button
           type="button"
           onClick={handleClose}
@@ -121,40 +123,10 @@ export function CanvasImport({ studentId, onImported }: CanvasImportProps) {
       {/* ── Step 1: credentials form ── */}
       {step === "form" && (
         <form onSubmit={handleFetch} className="space-y-4">
-          <p className="text-xs text-gray-500">
-            Your token is used only for this request and is never stored.
-          </p>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Canvas URL
-            </label>
-            <input
-              type="url"
-              required
-              placeholder="https://yourschool.instructure.com"
-              value={canvasUrl}
-              onChange={(e) => setCanvasUrl(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Canvas Access Token
-            </label>
-            <input
-              type="password"
-              required
-              placeholder="Paste your Canvas API token"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Canvas → Account → Settings → New Access Token
-            </p>
-          </div>
+          <CanvasConnectionFields
+            studentId={studentId} canvasUrl={canvasUrl} onUrlChange={setCanvasUrl}
+            token={token} onTokenChange={setToken} disabled={isLoading}
+          />
 
           {error && (
             <p className="text-xs text-red-600 rounded border border-red-200 bg-red-50 px-3 py-2">
