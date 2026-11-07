@@ -10,6 +10,7 @@
 Academic-digital-twin-simulator/
 ├── backend/          Python · FastAPI · SQLAlchemy · numpy/scipy · Anthropic SDK
 ├── frontend/         Next.js 15 · TypeScript · Tailwind CSS · Recharts
+├── docs/             Canvas connection notes and live verification log
 ├── DEPLOY.md         Railway + Vercel deployment guide
 └── DEMO.md           5-minute demo script for professors / hackathons
 ```
@@ -43,7 +44,7 @@ Academic-digital-twin-simulator/
                     ┌────────────▼─────────────────────────────┐
                     │           SQLite / PostgreSQL             │
                     │  students · courses · simulation_runs     │
-                    │  actual_grades · feedback                 │
+                    │  actual_grades                            │
                     └──────────────────────────────────────────┘
 ```
 
@@ -57,10 +58,11 @@ Academic-digital-twin-simulator/
 cd backend
 
 # Create and activate virtual environment
-python -m venv .venv
+python3 -m venv .venv              # use "python" on Windows
 
 # Activate (choose your shell):
-source .venv/Scripts/activate      # Git Bash / WSL
+source .venv/bin/activate          # macOS / Linux / WSL
+source .venv/Scripts/activate      # Git Bash
 .venv\Scripts\Activate.ps1         # PowerShell
 .venv\Scripts\activate.bat         # Command Prompt
 
@@ -95,7 +97,7 @@ Open: `http://localhost:3000`
 
 ```bash
 cd backend
-.venv\Scripts\Activate.ps1
+source .venv/bin/activate          # or .venv\Scripts\Activate.ps1 on Windows
 python seed.py
 ```
 
@@ -111,7 +113,7 @@ cd backend
 python -m pytest tests/ -v
 ```
 
-147 tests, including authentication and cross-account authorization regression coverage.
+182 tests, including authentication, cross-account authorization, and Canvas connection regression coverage.
 
 ---
 
@@ -121,11 +123,14 @@ python -m pytest tests/ -v
 |------|-------|-------------|
 | **Home** | `/` | Landing page with feature overview and sign-up CTA |
 | **Login / Register** | `/login` | JWT-based authentication |
-| **Dashboard** | `/dashboard` | Latest simulation, GPA trend chart, streak badge, Monte Carlo bands, email summary |
+| **Forgot / Reset Password** | `/forgot-password`, `/reset-password` | Request a reset email and set a new password |
+| **Dashboard** | `/dashboard` | Latest simulation, GPA trend chart, streak and achievement badges, burnout heatmap, Monte Carlo bands, email summary |
 | **Profile** | `/profile` | Student profile, course enrollment, and Canvas LMS import |
-| **Scenarios** | `/scenarios` | Run simulations, save/load templates, What-If panel |
-| **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo, actual grade tracker, CSV export, replay |
+| **Canvas Import** | `/canvas` | Step-by-step Canvas LMS course import: connect, preview, import |
+| **Scenarios** | `/scenarios` | Run simulations, save/load templates, course load check, What-If panel, week-by-week replay |
+| **Scenario Detail** | `/scenarios/:id` | Full report: charts, weekly table, Monte Carlo, actual grade tracker, CSV export |
 | **History** | `/history` | All simulations with text search, burnout/strategy filters, sort, CSV export |
+| **Grades** | `/grades` | Enter actual course grades for a simulation and compare them with predictions |
 | **Compare** | `/compare` | Side-by-side overlay of two scenarios with winner summary |
 | **Optimizer** | `/optimizer` | Differential evolution schedule optimizer |
 | **Schedule** | `/schedule` | Auto-generated weekly study schedule based on course difficulty and credits |
@@ -135,18 +140,14 @@ python -m pytest tests/ -v
 | **Settings** | `/settings` | Change password, email verification, notification preferences, theme, delete account |
 | **Admin** | `/admin` | Server-authorized admin dashboard with student analytics |
 | **Wellness Journal** | `/wellness` | Log daily mood and energy, chart against burnout predictions |
-| **Leaderboard** | `/leaderboard` | Anonymous GPA percentile ranking across all users |
-| **Badges** | `/badges` | Achievement badges for streaks, milestones, and simulation goals |
+| **Leaderboard** | `/leaderboard` | Top 10 anonymous students by best predicted GPA |
 | **Pomodoro Timer** | `/timer` | Built-in 25/5 focus timer with session logging |
-| **GPA Calculator** | `/gpa-calc` | Traditional letter-grade to GPA calculator |
-| **Course Load Advisor** | `/load-advisor` | Sustainability warning based on credits, work hours, and sleep |
+| **GPA Calculator** | `/gpa-calc` | Letter-grade GPA calculator plus a target-GPA planner |
 | **Multi-Semester** | `/planner` | Chain multiple semesters and see cumulative GPA trajectory |
-| **Replay** | `/replay` | Step through any simulation week-by-week with animated charts |
-| **Heatmap** | `/heatmap` | Burnout risk calendar heatmap across all simulation history |
 | **Progress Report** | `/report` | Printable/PDF progress report with GPA trend and best scenario |
 | **Share** | `/share/:id` | Privacy notice; public sharing is disabled |
 | **Verify Email** | `/verify-email` | Email verification landing page |
-| **Command Palette** | `Cmd+K` | Quick-launch any page or action by typing |
+| **Command Palette** | `Cmd+K` | Jump to any main page by typing |
 
 ---
 
@@ -194,7 +195,7 @@ update requires users to sign in again and request new password-reset links.
 - **Mid-semester course drop** — freeze a course grade at a chosen week and remove it from ongoing load
 
 ### Monte Carlo Analysis
-Run 200 randomized simulations with sleep jitter as the variance proxy. Produces **p10 / p50 / p90 GPA confidence bands** displayed as a shaded area on the GPA trajectory chart.
+Run 200 randomized simulations by default (configurable from 10 to 1000), using small random changes to nightly sleep as the source of variation. Produces **p10 / p50 / p90 GPA confidence bands** displayed as a shaded area on the GPA trajectory chart.
 
 ### AI Advisor (Claude)
 Natural-language chat powered by `claude-haiku-4-5-20251001`.
@@ -223,8 +224,14 @@ Auto-generates a Mon–Sun study schedule distributing hours proportional to cou
 
 ### Gamification
 - **Streak badge** — consecutive days with at least one simulation; shown in the Dashboard header
-- **Achievement badges** — unlock for: first simulation, 7-day streak, GPA goal met, LOW burnout risk, 10 simulations run
-- **Anonymous leaderboard** — your predicted GPA percentile among all users
+- **Achievement badges** (on the Dashboard):
+  - 🧪 **First Simulation** — run your first simulation
+  - 🔥 **On Fire** — 3+ simulations in 7 days
+  - 🎯 **Goal Crusher** — hit your GPA goal
+  - 😌 **Chill Mode** — any simulation with LOW burnout risk
+  - 📊 **Data Driven** — run 10+ simulations
+  - 🏆 **GPA Champion** — predicted GPA of 3.8 or higher
+- **Anonymous leaderboard** — top 10 students by best predicted GPA; no names shown
 
 ### Wellness Journal
 Log daily mood (1–5) and energy (1–5) from `/wellness`. Charted as a line graph and correlated against burnout predictions from your latest simulations.
@@ -233,19 +240,19 @@ Log daily mood (1–5) and energy (1–5) from `/wellness`. Charted as a line gr
 Built-in 25-minute focus / 5-minute break timer at `/timer`. Logs completed sessions and shows total weekly study hours.
 
 ### GPA Calculator
-Traditional letter-grade → GPA calculator at `/gpa-calc`. Supports custom credit weights and multiple grading scales.
+Letter-grade GPA calculator at `/gpa-calc`. Enter each course's credits and letter grade (A through F, with +/−) to get your semester GPA. Then enter your current GPA and credits to see what this semester's GPA needs to be to reach a target.
 
 ### Course Load Advisor
-Pre-run sustainability check at `/load-advisor`. Warns if total credits + work hours + sleep target exceeds a safe threshold before you waste a simulation run.
+Sustainability check on the Scenarios page. Warns if total credits + work hours + sleep target exceed a safe threshold before you waste a simulation run.
 
 ### Multi-Semester Planner
 Chain up to 4 semesters at `/planner`. Each semester inherits the ending GPA of the previous one — see your cumulative GPA trajectory over your full degree.
 
 ### Simulation Replay
-Step through any simulation week-by-week at `/replay` with animated charts showing GPA, cognitive load, and burnout evolving over the semester.
+Step through a simulation week-by-week on the Scenarios page, with animated charts showing GPA, cognitive load, and burnout evolving over the semester.
 
 ### Burnout Heatmap
-GitHub-style calendar grid at `/heatmap` showing burnout risk colour for each simulation across the year. Quickly identify high-risk streaks.
+GitHub-style 12-week calendar grid on the Dashboard, coloured by the burnout risk of the simulations you ran each day. Quickly identify high-risk streaks.
 
 ### Progress Report
 One-click printable report at `/report` with GPA trend, burnout history, best scenario, and personalised recommendations. Uses `@media print` CSS — no external library needed.
@@ -268,7 +275,7 @@ Public sharing is disabled. Existing `/share/:id` links show a privacy notice. S
 Service worker at `public/sw.js` caches static assets with a network-first strategy for navigation. An amber offline banner appears automatically when the device loses connectivity.
 
 ### Command Palette
-Press `Cmd+K` (Mac) / `Ctrl+K` (Windows) anywhere in the app to open a command palette. Type to search pages, actions, and simulations — navigate without touching the mouse.
+Press `Cmd+K` (Mac) / `Ctrl+K` (Windows) anywhere in the app to open a command palette. Type to find a page and jump to it without touching the mouse.
 
 ### Admin Dashboard
 The `/admin` page requires a signed-in account whose ID is configured in backend `ADMIN_STUDENT_IDS`. The existing UI PIN (`admin1234`) is only an extra screen gate:
@@ -281,7 +288,7 @@ The `/advisor/multi` view requires server-configured administrator access to mon
 ### Canvas LMS Integration
 Import enrolled courses directly from your institution's Canvas instance.
 
-1. On the **Profile** page, click **Import from Canvas**
+1. On the **Profile** page, click **Import from Canvas** (or open **Canvas Import** from the sidebar)
 2. Select **Grambling State University** to fill its Canvas address automatically. For another school, paste any link from its Canvas dashboard or a course page; the app extracts the site address.
 3. Paste the full Canvas access token from that same school/account. The app trims surrounding whitespace and accepts a pasted `Bearer ` prefix.
 4. Review, edit credits/difficulty, and import
@@ -316,11 +323,16 @@ Preference saved to your account (`theme_preference` column). System preference 
 | Shortcut | Action |
 |----------|--------|
 | `Cmd/Ctrl + K` | Open command palette |
-| `?` | Show shortcuts modal |
-| `N` | New scenario |
+| `?` or `/` | Show or hide the shortcuts help |
+| `Esc` | Close the shortcuts help |
 | `D` | Go to Dashboard |
+| `S` | Go to Scenarios |
 | `H` | Go to History |
 | `A` | Go to Advisor |
+| `G` | Go to GPA Calculator |
+| `T` | Go to Pomodoro Timer |
+
+Single-key shortcuts are ignored while you're typing in a text field.
 
 ---
 
@@ -353,12 +365,15 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 
 | Variable | Where | Value |
 |----------|-------|-------|
+| `DATABASE_URL` | Railway | Your Railway PostgreSQL connection string (falls back to local SQLite if unset) |
 | `ANTHROPIC_API_KEY` | Railway | Your Anthropic key |
 | `RESEND_API_KEY` | Railway | Your Resend key (for password reset + notification emails) |
 | `CORS_ORIGINS` | Railway | `https://your-app.vercel.app` |
 | `SECRET_KEY` | Railway | Random 32-char string (`python -c "import secrets; print(secrets.token_hex(32))"`) |
 | `FRONTEND_URL` | Railway | `https://your-app.vercel.app` (used in email links) |
 | `NEXT_PUBLIC_API_URL` | Vercel | `https://your-backend.railway.app` |
+
+**Optional:** `ADMIN_STUDENT_IDS` (comma-separated account IDs with cross-account admin access; empty by default) and `RESEND_FROM` (email sender address).
 
 ---
 
@@ -372,7 +387,7 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 | **Performance Model** | Sigmoid-based grade prediction (0–100%) from study ratio, cognitive load, retention, and exam week modifier. Study ratio of 2.0 → ~91% base score. |
 | **Recovery & Burnout** | Logistic burnout probability from sustained overload and sleep deprivation. Burnout computed before grade prediction so exam modifiers are accurate. |
 | **Optimizer** | `scipy.optimize.differential_evolution` over work hours, sleep, and study strategy. |
-| **Monte Carlo** | 200 runs with ±0.15σ sleep jitter as variance proxy → p10/p50/p90 GPA bands. |
+| **Monte Carlo** | 200 runs by default (10–1000), each with Gaussian sleep jitter (σ = 0.5 × `study_variance`, default 0.15 → 0.075h) as the variance proxy → p10/p50/p90 GPA bands. |
 
 ---
 
@@ -410,7 +425,7 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 | GPA / Load / Burnout Comparison (overlaid lines) | Compare |
 | Per-Course Grade Comparison (table) | Compare |
 | Wellness mood/energy line chart | Wellness Journal |
-| Burnout calendar heatmap | Heatmap |
+| Burnout calendar heatmap (12 weeks) | Dashboard |
 | Admin: GPA distribution, burnout rate over time, strategy breakdown | Admin |
 
 ---
@@ -427,32 +442,39 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 | POST | `/api/v1/auth/change-password` | Change password (requires current password) |
 | POST | `/api/v1/auth/send-verification` | Send email verification link |
 | POST | `/api/v1/auth/verify-email` | Verify email with JWT token |
-| GET | `/api/v1/students/` | List all students |
-| POST | `/api/v1/students/` | Create student profile |
+| GET | `/api/v1/students/` | List all students (admin only) |
+| POST | `/api/v1/students/` | Create passwordless student profile (admin only) |
 | GET | `/api/v1/students/{id}` | Get student profile |
 | PUT | `/api/v1/students/{id}` | Update profile (including theme, notification prefs) |
 | DELETE | `/api/v1/students/{id}` | Delete student account |
 | POST | `/api/v1/students/{id}/courses` | Add course |
 | GET | `/api/v1/students/{id}/courses` | List courses |
 | POST | `/api/v1/students/{id}/send-summary` | Email weekly summary to student |
+| POST | `/api/v1/students/feedback` | Send in-app feedback (logged and emailed to the admin) |
 | DELETE | `/api/v1/courses/{id}` | Remove course |
 | POST | `/api/v1/simulations/run` | Run simulation |
 | GET | `/api/v1/simulations/{id}` | Get result |
 | GET | `/api/v1/simulations/student/{id}` | Simulation history |
 | DELETE | `/api/v1/simulations/{id}` | Delete simulation |
-| POST | `/api/v1/simulations/monte-carlo` | Run Monte Carlo (200 iterations) |
+| POST | `/api/v1/simulations/monte-carlo` | Run Monte Carlo (200 runs by default) |
+| GET | `/api/v1/simulations/leaderboard` | Top 10 anonymous entries by best predicted GPA |
 | POST | `/api/v1/simulations/{id}/actual-grades` | Save actual weekly grades |
 | GET | `/api/v1/simulations/{id}/actual-grades` | Get actual grades |
+| POST | `/api/v1/simulations/{id}/note` | Save a text note on a simulation |
+| GET | `/api/v1/simulations/{id}/note` | Get a simulation's note |
+| POST | `/api/v1/simulations/{id}/tags` | Save tags on a simulation |
+| GET | `/api/v1/simulations/{id}/tags` | Get a simulation's tags |
 | POST | `/api/v1/scenarios/optimize` | Run schedule optimizer |
 | POST | `/api/v1/advisor/chat` | AI advisor chat (auto-loads latest sim context) |
 | POST | `/api/v1/advisor/goal-target` | Goal targeting grid search |
 | POST | `/api/v1/canvas/preview` | Fetch courses from Canvas LMS (paginated) |
+| GET | `/health` | Health check (used by Railway) |
 
 ---
 
 ## Tech Stack
 
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, Pydantic v2, numpy, scipy, httpx, anthropic, python-jose, bcrypt, slowapi, resend, pytest
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy 2.0, psycopg (PostgreSQL), Pydantic v2, numpy, scipy, httpx, anthropic, python-jose, bcrypt, slowapi, resend, pytest
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS, Recharts, Axios
 - **Deployed**: Railway (backend) · Vercel (frontend)
 
@@ -463,8 +485,18 @@ See [DEPLOY.md](DEPLOY.md) for the full step-by-step guide.
 **"Cannot reach the backend"**
 The backend server is not running or a stale process is blocking port 8000.
 
+```bash
+# macOS / Linux: stop whatever is holding port 8000
+lsof -ti :8000 | xargs kill
+
+# Then restart
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --port 8000
+```
+
 ```powershell
-# Kill stale processes on Windows
+# Windows: kill stale processes
 taskkill /F /IM python.exe
 
 # Then restart
@@ -483,11 +515,19 @@ taskkill /F /PID <pid>
 **Frontend shows "Internal Service Error" or blank pages**
 The `.next` build cache is stale. Clear it and restart:
 
+```bash
+# macOS / Linux
+cd frontend
+rm -rf .next
+npm run dev
+```
+
 ```powershell
+# Windows
 cd frontend
 Remove-Item -Recurse -Force .next
 npm run dev
-# After first build, prevent future OneDrive corruption:
+# If the project lives in OneDrive, prevent future cache corruption after the first build:
 attrib +P .next /S /D
 ```
 
